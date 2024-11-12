@@ -3,7 +3,8 @@ import {
   statusCodes,
   User as GoogleUser,
 } from '@react-native-google-signin/google-signin';
-import auth from '@react-native-firebase/auth';
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useState, useEffect } from 'react';
 
 enum GoogleSignInErrorEnum {
@@ -14,6 +15,8 @@ enum GoogleSignInErrorEnum {
   IN_PROGRESS = 'Sign in already in progress',
   NETWORK_ERROR = 'Network error occurred',
   INVALID_ACCOUNT = 'Invalid Google account selected',
+  SIGN_OUT_ERROR = 'Failed to sign out',
+  NO_ID_TOKEN = 'No ID token found',
 }
 
 interface GoogleSignInError extends Error {
@@ -21,21 +24,63 @@ interface GoogleSignInError extends Error {
   message: string;
 }
 
+const PERSISTENCE_KEY = 'userAuthData';
+
 const useGoogleAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<GoogleSignInError | null>(null);
+  const [user, setUser] = useState<FirebaseAuthTypes.User | null>(null);
 
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: '436319392807-5mccu66ndgij36epbis7aeh4ejdh5tni.apps.googleusercontent.com',
+      offlineAccess: true,
+      forceCodeForRefreshToken: true,
     });
+
+    loadUserData();
+    checkUserStatus();
   }, []);
+
+  const loadUserData = async () => {
+    try {
+      const storedUser = await AsyncStorage.getItem(PERSISTENCE_KEY);
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      }
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    }
+  };
+
+  const persistUserData = async (userData: FirebaseAuthTypes.User) => {
+    try {
+      await AsyncStorage.setItem(PERSISTENCE_KEY, JSON.stringify(userData));
+      setUser(userData);
+    } catch (error) {
+      console.error('Failed to save user data:', error);
+    }
+  };
+
+  const clearUserData = async () => {
+    try {
+      await AsyncStorage.removeItem(PERSISTENCE_KEY);
+      setUser(null);
+    } catch (error) {
+      console.error('Failed to clear user data:', error);
+    }
+  };
+
+  const checkUserStatus = async () => {
+    const currentUser = auth().currentUser;
+    if (currentUser) {
+      setUser(currentUser);
+    }
+  };
 
   const checkPlayServices = async (): Promise<boolean> => {
     try {
-      await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      });
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       return true;
     } catch (error: any) {
       if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
@@ -46,10 +91,7 @@ const useGoogleAuth = () => {
   };
 
   const handleSignInError = (error: any): GoogleSignInError => {
-    console.error('Google Sign-In Error Details:', {
-      code: error.code,
-      message: error.message,
-    });
+    console.error('Google Sign-In Error Details:', { code: error.code, message: error.message });
 
     let errorMessage: string;
     switch (error.code) {
@@ -62,6 +104,9 @@ const useGoogleAuth = () => {
       case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
         errorMessage = GoogleSignInErrorEnum.PLAY_SERVICES_NOT_AVAILABLE;
         break;
+      case 'DEVELOPER_ERROR':
+        errorMessage = GoogleSignInErrorEnum.DEVELOPER_ERROR;
+        break;
       case -1:
         errorMessage = GoogleSignInErrorEnum.NETWORK_ERROR;
         break;
@@ -69,11 +114,7 @@ const useGoogleAuth = () => {
         errorMessage = error.message || 'Unknown error occurred';
     }
 
-    return {
-      name: 'GoogleSignInError',
-      code: error.code,
-      message: errorMessage,
-    } as GoogleSignInError;
+    return { name: 'GoogleSignInError', code: error.code, message: errorMessage } as GoogleSignInError;
   };
 
   const signInWithGoogle = async () => {
@@ -81,28 +122,21 @@ const useGoogleAuth = () => {
     setError(null);
 
     try {
-      // Check if Google Play Services is available
       const isPlayServicesAvailable = await checkPlayServices();
       if (!isPlayServicesAvailable) {
         throw new Error(GoogleSignInErrorEnum.PLAY_SERVICES_NOT_AVAILABLE);
       }
 
-      // Sign the user in with Google and retrieve the ID token
       const signInResult = await GoogleSignin.signIn();
-
-      // Try the new style of google-signin result, from v13+ of that module
       let idToken = signInResult?.data?.idToken;
       if (!idToken) {
-        // If you are using older versions of google-signin, try old style result
-        idToken = signInResult?.idToken!;
-      }
-      if (!idToken) {
-        throw new Error('No ID token found');
+        throw new Error(GoogleSignInErrorEnum.NO_ID_TOKEN);
       }
 
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
       const userCredential = await auth().signInWithCredential(googleCredential);
 
+      persistUserData(userCredential.user);
       return userCredential.user;
 
     } catch (error: any) {
@@ -122,12 +156,13 @@ const useGoogleAuth = () => {
       await GoogleSignin.revokeAccess();
       await GoogleSignin.signOut();
       await auth().signOut();
+      await clearUserData();
     } catch (error: any) {
       console.error('Google Sign-Out error:', error);
       setError({
         name: 'GoogleSignInError',
-        code: 'SIGN_OUT_ERROR',
-        message: 'Failed to sign out',
+        code: GoogleSignInErrorEnum.SIGN_OUT_ERROR,
+        message: GoogleSignInErrorEnum.SIGN_OUT_ERROR,
       } as GoogleSignInError);
       throw error;
     } finally {
@@ -135,7 +170,7 @@ const useGoogleAuth = () => {
     }
   };
 
-  return { signInWithGoogle, signOut, isLoading, error };
+  return { signInWithGoogle, signOut, isLoading, error, user };
 };
 
 export default useGoogleAuth;

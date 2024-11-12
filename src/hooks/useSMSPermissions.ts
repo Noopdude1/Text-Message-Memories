@@ -3,9 +3,14 @@ import { PermissionsAndroid, Platform } from 'react-native';
 
 export const useSMSPermissions = () => {
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const requestPermission = async () => {
+  const requestPermission = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
       if (Platform.OS === 'android') {
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.READ_SMS,
@@ -16,10 +21,20 @@ export const useSMSPermissions = () => {
           }
         );
         setPermissionGranted(granted === PermissionsAndroid.RESULTS.GRANTED);
+      } else {
+        setPermissionGranted(true);
       }
-    };
+    } catch (err) {
+      setError('Failed to request SMS permissions. Please try again.');
+      console.error('Failed to request SMS permissions:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     requestPermission();
   }, []);
 
-  return permissionGranted;
+  return { permissionGranted, loading, error, retry: requestPermission };
 };

@@ -1,38 +1,77 @@
-import React, { useEffect, useState } from 'react';
-import { SafeAreaView, StatusBar, Text } from 'react-native';
-import auth from '@react-native-firebase/auth';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import AppNavigator from './src/navigation';
-import LoginScreen from './src/screens/LoginScreen';
+import React, { useEffect } from 'react';
+import { SafeAreaView, StatusBar, Text, View, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useSMSPermissions } from './src/hooks/useSMSPermissions';
+import useContacts from './src/hooks/useContacts';
+import AppNavigator from './src/navigation';
 
 const App: React.FC = () => {
-  const [user, setUser] = useState(null);
-  const hasPermission = useSMSPermissions();
+  const {
+    permissionGranted: smsPermissionGranted,
+    error: smsError,
+    retry: retrySMSPermission,
+  } = useSMSPermissions();
+
+  const {
+    permissionGranted: contactsPermissionGranted,
+    error: contactsError,
+    retry: retryContactsPermission,
+  } = useContacts();
 
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // Replace with your Web Client ID from Firebase
-    });
+    if (smsPermissionGranted && !contactsPermissionGranted) {
+      retryContactsPermission();
+    }
+  }, [smsPermissionGranted, contactsPermissionGranted, retryContactsPermission]);
 
-    const unsubscribe = auth().onAuthStateChanged((authUser) => {
-      setUser(authUser);
-    });
+  useEffect(() => {
+    if (contactsPermissionGranted && !smsPermissionGranted ) {
+      retrySMSPermission();
+    }
+  }, [smsPermissionGranted, contactsPermissionGranted, retrySMSPermission]);
 
-    return unsubscribe;
-  }, []);
+  if (!contactsPermissionGranted || !smsPermissionGranted) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text>Requesting permissions...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (smsError || contactsError) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: 'red' }}>{smsError || contactsError}</Text>
+        <TouchableOpacity onPress={() => {
+          if (smsError) retrySMSPermission();
+          if (contactsError) retryContactsPermission();
+        }} style={{ marginTop: 20 }}>
+          <Text style={{ color: 'blue' }}>Retry Permissions</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" />
-      {hasPermission ? (
-        user ? (
-          <AppNavigator />
-        ) : (
-          <LoginScreen />
-        )
+      {smsPermissionGranted && contactsPermissionGranted ? (
+        <AppNavigator />
       ) : (
-        <Text>No SMS Permission</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ fontSize: 16, textAlign: 'center' }}>
+            This app requires SMS and Contacts permissions to function. Please grant permissions to continue.
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              retrySMSPermission();
+              retryContactsPermission();
+            }}
+            style={{ marginTop: 20, padding: 10, backgroundColor: '#0066FF', borderRadius: 5 }}
+          >
+            <Text style={{ color: '#fff' }}>Grant Permissions</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </SafeAreaView>
   );
