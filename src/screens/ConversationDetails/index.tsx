@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
 import SmsAndroid from 'react-native-get-sms-android';
 import BottomBar from '../../components/BottomBar';
 import ErrorComponent from '../../components/ErrorComponent';
@@ -15,14 +15,17 @@ interface RouteParams {
   address: string;
 }
 
-type ConversationDetailsScreenNavigationProp = NativeStackNavigationProp<NavigationParams, 'Conversations'>;
+type ConversationDetailsScreenNavigationProp = NativeStackNavigationProp<
+  NavigationParams,
+  'ConversationDetails'
+>;
 
 const ConversationDetailsScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   const { address } = route.params;
   const [messages, setMessages] = useState<SMSMessage[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(PROMPTS[0].title);
-  const [customPrompt, setCustomPrompt] = useState<string | null>();
+  const [customPrompt, setCustomPrompt] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingNext, setLoadingNext] = useState(false);
@@ -43,7 +46,7 @@ const ConversationDetailsScreen: React.FC = () => {
 
         const [inboxMessages, sentMessages] = await Promise.all([
           fetchFromBox('inbox'),
-          fetchFromBox('sent')
+          fetchFromBox('sent'),
         ]);
 
         const allMessages = [...inboxMessages, ...sentMessages].sort((a, b) => a.date - b.date);
@@ -60,7 +63,8 @@ const ConversationDetailsScreen: React.FC = () => {
   }, [address]);
 
   const handleNext = async () => {
-    const selectedDetails = PROMPTS.find((prompt) => prompt.title === selectedPrompt)?.details || customPrompt;
+    const selectedDetails =
+      PROMPTS.find((prompt) => prompt.title === selectedPrompt)?.details || customPrompt;
 
     if (selectedDetails) {
       setLoadingNext(true);
@@ -69,10 +73,12 @@ const ConversationDetailsScreen: React.FC = () => {
       setLoadingNext(false);
 
       if (story) {
-        console.log("Generated Story:", story);
+        navigation.navigate('StoryEditor', { storyContent: story });
       } else {
-        setGenerationError("Failed to generate story. Please try again.");
+        setGenerationError('Failed to generate story. Please try again.');
       }
+    } else {
+      Alert.alert('Please select or enter a prompt');
     }
   };
 
@@ -86,7 +92,7 @@ const ConversationDetailsScreen: React.FC = () => {
 
   return (
     <>
-      <TopBar title="Text Story Creator" currentStep={2} totalSteps={4} />
+      <TopBar title="Text Story Creator" currentStep={2} totalSteps={5} />
       <View style={styles.container}>
         <Text style={styles.title}>Customize Your Story</Text>
         <ScrollView contentContainerStyle={styles.promptContainer} automaticallyAdjustKeyboardInsets>
@@ -116,7 +122,7 @@ const ConversationDetailsScreen: React.FC = () => {
               style={styles.customPromptInput}
               placeholderTextColor="#999"
               placeholder="Write your own custom prompt for the story generation..."
-              value={customPrompt!}
+              value={customPrompt}
               onChangeText={(text) => {
                 setCustomPrompt(text);
                 setSelectedPrompt(null);
@@ -124,14 +130,18 @@ const ConversationDetailsScreen: React.FC = () => {
               multiline
             />
           </View>
+
+          {generationError && (
+            <ErrorComponent message={generationError} onRetry={handleNext} />
+          )}
         </ScrollView>
       </View>
       <BottomBar
         currentStep={2}
-        totalSteps={4}
+        totalSteps={5}
         onNext={handleNext}
-        onBack={() => navigation.pop()}
-        isNextEnabled={!!selectedPrompt || !!customPrompt?.trim()}
+        onBack={() => navigation.goBack()}
+        isNextEnabled={!!selectedPrompt || !!customPrompt.trim()}
         loading={loadingNext}
       />
     </>

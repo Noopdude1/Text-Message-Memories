@@ -11,11 +11,13 @@ export interface SMSMessage {
 export interface Conversation {
   address: string;
   messages: SMSMessage[];
+  navigationAddress: string;
 }
 
-// Extend ParamListBase to ensure compatibility with React Navigation
 export interface NavigationParams extends ParamListBase {
   Conversations: undefined;
   ConversationDetails: { address: string };
   Login: undefined;
+  StoryEditor: { storyContent: string };
+  Preview: { storyText: string; images: { [key: string]: string } };
 }

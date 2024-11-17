@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform, Alert, Linking } from 'react-native';
 
-export const useSMSPermissions = () => {
+export const usePermissions = () => {
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,21 +12,43 @@ export const useSMSPermissions = () => {
 
     try {
       if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
+        // Define permissions for contacts and SMS
+        const permissions = [
           PermissionsAndroid.PERMISSIONS.READ_SMS,
-          {
-            title: 'SMS Permission',
-            message: 'This app requires SMS access to display your messages.',
-            buttonPositive: 'OK',
-          }
+          PermissionsAndroid.PERMISSIONS.READ_CONTACTS,
+        ];
+
+        // Request permissions
+        const result = await PermissionsAndroid.requestMultiple(permissions);
+
+        // Check if all permissions are granted
+        const allPermissionsGranted = Object.values(result).every(
+          (permission) => permission === PermissionsAndroid.RESULTS.GRANTED
         );
-        setPermissionGranted(granted === PermissionsAndroid.RESULTS.GRANTED);
+
+        if (!allPermissionsGranted) {
+          Alert.alert(
+            'Permissions Required',
+            'This app requires permissions for contacts and SMS to function properly. Please enable them in your device settings.',
+            [
+              {
+                text: 'Open Settings',
+                onPress: () => {
+                  Linking.openSettings();
+                }
+              },
+              { text: 'Cancel' }
+            ]
+          );
+        }
+
+        setPermissionGranted(allPermissionsGranted);
       } else {
         setPermissionGranted(true);
       }
     } catch (err) {
-      setError('Failed to request SMS permissions. Please try again.');
-      console.error('Failed to request SMS permissions:', err);
+      setError('Failed to request permissions. Please try again.');
+      console.error('Failed to request permissions:', err);
     } finally {
       setLoading(false);
     }
