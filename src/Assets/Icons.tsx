@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, {Path, Polygon} from 'react-native-svg';
+import Svg, {Path, Polygon, Polyline} from 'react-native-svg';
 
 interface IconProps {
   size?: number;
@@ -114,6 +114,50 @@ export const DustbinIcon: React.FC<IconProps> = ({
   >
     <Path
       d="M7 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2h4a1 1 0 1 1 0 2h-1.069l-.867 12.142A2 2 0 0 1 17.069 22H6.93a2 2 0 0 1-1.995-1.858L4.07 8H3a1 1 0 0 1 0-2h4V4zm2 2h6V4H9v2zM6.074 8l.857 12H17.07l.857-12H6.074zM10 10a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1zm4 0a1 1 0 0 1 1 1v6a1 1 0 1 1-2 0v-6a1 1 0 0 1 1-1z"
+      fill={color}
+    />
+  </Svg>
+);
+
+export const PlusIcon: React.FC<IconProps> = ({ size = 24, color = '#000', ...props }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" {...props}>
+    <Path
+      d="M12 5v14M5 12h14"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const HamburgerIcon: React.FC<IconProps> = ({
+  size = 24,
+  color = '#000',
+  ...props
+}) => (
+  <Svg
+    fill={color}
+    width={size}
+    height={size}
+    viewBox="0 0 16 16"
+    {...props}
+  >
+    <Path d="M2 3h12a1 1 0 0 1 0 2H2a1 1 0 1 1 0-2zm0 4h12a1 1 0 0 1 0 2H2a1 1 0 1 1 0-2zm0 4h12a1 1 0 0 1 0 2H2a1 1 0 0 1 0-2z" />
+  </Svg>
+);
+
+
+export const CheckIcon: React.FC<IconProps> = ({ size = 24, color = '#000', ...props }) => (
+  <Svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    {...props}
+  >
+    <Path
+      d="M18.71,7.21a1,1,0,0,0-1.42,0L9.84,14.67,6.71,11.53A1,1,0,1,0,5.29,13l3.84,3.84a1,1,0,0,0,1.42,0l8.16-8.16A1,1,0,0,0,18.71,7.21Z"
       fill={color}
     />
   </Svg>

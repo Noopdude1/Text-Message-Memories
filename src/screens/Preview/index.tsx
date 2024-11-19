@@ -1,3 +1,5 @@
+// src/screens/Preview/index.tsx
+
 import React from 'react';
 import { View, Text, Image, StyleSheet, ScrollView, Alert } from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
@@ -12,41 +14,53 @@ type PreviewScreenNavigationProp = NativeStackNavigationProp<
 >;
 
 interface PreviewScreenRouteParams {
-  storyText: string;
-  images: { [key: string]: string };
+  storyParts: StoryPart[];
+}
+
+interface StoryPart {
+  id: string;
+  type: 'text' | 'image';
+  content?: string;
+  uri?: string;
 }
 
 const PreviewScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: PreviewScreenRouteParams }, 'params'>>();
   const navigation = useNavigation<PreviewScreenNavigationProp>();
-  const { storyText, images } = route.params;
+  const { storyParts } = route.params;
 
+  /**
+   * Renders the story by mapping over the story parts.
+   * Text parts are displayed as Text components.
+   * Image parts are displayed as Image components.
+   */
   const renderStory = () => {
-    const parts = storyText.split(/(\{\{.*?\}\})/g);
-    return parts.map((part, index) => {
-      if (part.match(/\{\{.*?\}\}/)) {
-        const placeholder = part;
-        const imageUrl = images[placeholder];
-
+    return storyParts.map((part) => {
+      if (part.type === 'text') {
         return (
-          <View key={index} style={styles.imageContainer}>
-            {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.image} />
+          <Text key={part.id} style={styles.storyText}>
+            {part.content}
+          </Text>
+        );
+      } else if (part.type === 'image') {
+        return (
+          <View key={part.id} style={styles.imageContainer}>
+            {part.uri ? (
+              <Image source={{ uri: part.uri }} style={styles.image} />
             ) : (
               <Text style={styles.errorText}>Image not available.</Text>
             )}
           </View>
         );
       } else {
-        return (
-          <Text key={index} style={styles.storyText}>
-            {part}
-          </Text>
-        );
+        return null;
       }
     });
   };
 
+  /**
+   * Handles the next action (e.g., saving or sharing the story).
+   */
   const handleNext = () => {
     // Proceed to the next step (e.g., save or share the story)
     Alert.alert('Story Completed', 'Your story is ready!');

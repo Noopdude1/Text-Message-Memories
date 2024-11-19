@@ -10,6 +10,7 @@ import { NavigationParams, SMSMessage } from '../../types';
 import { PROMPTS } from '../../utils/constants';
 import { generateStory } from '../../utils/openAiHelper';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import StoryEditorSkeleton from '../../components/StoryEditorSkeleton';
 
 interface RouteParams {
   address: string;
@@ -89,6 +90,13 @@ const ConversationDetailsScreen: React.FC = () => {
 
   if (loading) return <LoadingComponent message="Fetching messages..." />;
   if (error) return <ErrorComponent message={error} onRetry={() => setLoading(true)} />;
+  if (loadingNext) return <><TopBar title="Text Story Creator" currentStep={2} totalSteps={5} /><StoryEditorSkeleton/><BottomBar
+  currentStep={2}
+  totalSteps={5}
+  onNext={handleNext}
+  onBack={() => navigation.goBack()}
+  isNextEnabled={false}
+/></>
 
   return (
     <>
@@ -142,7 +150,6 @@ const ConversationDetailsScreen: React.FC = () => {
         onNext={handleNext}
         onBack={() => navigation.goBack()}
         isNextEnabled={!!selectedPrompt || !!customPrompt.trim()}
-        loading={loadingNext}
       />
     </>
   );

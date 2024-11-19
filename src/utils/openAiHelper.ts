@@ -52,7 +52,7 @@ export const generateStory = async ({
         {
           role: 'system',
           content:
-            'You are a creative storyteller who crafts engaging narratives based on SMS conversations. Include image placeholders at appropriate points in the story, enclosed in double curly braces, like {{Image description}}.',
+            'You are a creative storyteller who crafts engaging narratives based on SMS conversations. Focus on crafting the story based solely on the provided text messages.',
         },
         {
           role: 'user',

@@ -1,25 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  TextInput,
-  Text,
-  Image,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Dimensions,
-} from 'react-native';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import TopBar from '../../components/TopBar';
-import BottomBar from '../../components/BottomBar';
-import { generateImage } from '../../utils/openAiHelper';
-import { NavigationParams } from '../../types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { DustbinIcon, RetryIcon } from '../../Assets/Icons';
+import React, { memo, useCallback, useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  PermissionsAndroid,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { launchImageLibrary } from 'react-native-image-picker';
+import { CheckIcon, DustbinIcon, HamburgerIcon, PlusIcon } from '../../Assets/Icons';
+import BottomBar from '../../components/BottomBar';
+import TopBar from '../../components/TopBar';
+import { NavigationParams } from '../../types';
+
+const IMAGE_SIZE = 100;
+
+interface StoryPart {
+  id: string;
+  type: 'image' | 'text';
+  content?: string;
+  uri?: string;
+}
 
 type StoryEditorScreenNavigationProp = NativeStackNavigationProp<
   NavigationParams,
@@ -30,281 +39,264 @@ interface StoryEditorScreenRouteParams {
   storyContent: string;
 }
 
-interface StoryPart {
-  type: 'text' | 'image';
-  content?: string;
-  placeholder?: string;
-}
-
-const { width } = Dimensions.get('window');
-
-const StoryEditorScreen: React.FC = () => {
+const StoryEditorScreen = () => {
   const route = useRoute<RouteProp<{ params: StoryEditorScreenRouteParams }, 'params'>>();
   const navigation = useNavigation<StoryEditorScreenNavigationProp>();
   const { storyContent } = route.params;
 
   const [storyParts, setStoryParts] = useState<StoryPart[]>([]);
-  const [images, setImages] = useState<{ [key: string]: string }>({});
+  const [carouselImages, setCarouselImages] = useState<string[]>([]);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [loadingImages, setLoadingImages] = useState<{ [key: string]: boolean }>({});
 
-  useEffect(() => {
+  // Initialize story parts with correct type annotations
+  const initializeStoryParts = useCallback(() => {
     if (!storyContent) return;
 
-    /**
-     * Processes the initial story content into parts (text and images).
-     */
-    const processStoryContent = () => {
-      const parts = storyContent.split(/(\{\{.*?\}\})/g);
-      const newStoryParts: StoryPart[] = [];
+    const paragraphs = storyContent
+      .split(/\n+/)
+      .filter((p) => p.trim() !== '')
+      .map((paragraph, idx) => ({
+        id: `text-${Date.now()}-${idx}`,
+        type: 'text' as 'text',
+        content: paragraph,
+      }));
 
-      parts.forEach((part) => {
-        if (part.match(/\{\{.*?\}\}/)) {
-          newStoryParts.push({ type: 'image', placeholder: part });
-        } else {
-          const paragraphs = part.split(/\n+/).filter((p) => p.trim() !== '');
-          paragraphs.forEach((paragraph) => {
-            newStoryParts.push({ type: 'text', content: paragraph });
-          });
-        }
-      });
-
-      setStoryParts(newStoryParts);
-    };
-
-    processStoryContent();
+    setStoryParts(paragraphs);
   }, [storyContent]);
 
   useEffect(() => {
-    /**
-     * Fetches images for the image placeholders concurrently using Promise.all.
-     */
-    const fetchImages = async () => {
-      const imagePlaceholders = storyParts
-        .filter((part) => part.type === 'image')
-        .map((part) => part.placeholder!);
+    initializeStoryParts();
+  }, [initializeStoryParts]);
 
-      const newImages = { ...images };
-      const newLoadingImages = { ...loadingImages };
+  // Handle Image Selection
+  const handleAddImage = useCallback(async () => {
+    if (Platform.OS === 'android') {
+      const permission =
+        Platform.Version >= 33
+          ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
+          : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
 
-      const fetchImagePromises = imagePlaceholders.map(async (placeholder) => {
-        const description = placeholder.replace('{{', '').replace('}}', '');
-        if (!newImages[placeholder]) {
-          newLoadingImages[placeholder] = true;
-          setLoadingImages({ ...newLoadingImages });
-
-          try {
-            const imageUrl = await generateImage(description);
-            newImages[placeholder] = imageUrl;
-          } catch (error) {
-            Alert.alert('Image Generation Error', `Failed to generate image for: ${description}`);
-          } finally {
-            newLoadingImages[placeholder] = false;
-            setLoadingImages({ ...newLoadingImages });
-          }
+      const hasPermission = await PermissionsAndroid.check(permission);
+      if (!hasPermission) {
+        const granted = await PermissionsAndroid.request(permission);
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert(
+            'Permission Denied',
+            'Gallery access is required to select images.',
+            [{ text: 'OK', style: 'default' }]
+          );
+          return;
         }
-      });
-
-      await Promise.all(fetchImagePromises);
-      setImages({ ...newImages });
-    };
-
-    fetchImages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storyParts]);
-
-  /**
-   * Regenerates an image for a given placeholder.
-   * @param placeholder - The placeholder text for the image.
-   */
-  const handleRegenerateImage = async (placeholder: string) => {
-    const description = placeholder.replace('{{', '').replace('}}', '');
-    setLoadingImages((prev) => ({ ...prev, [placeholder]: true }));
-
-    try {
-      const imageUrl = await generateImage(description);
-      setImages((prevImages) => ({
-        ...prevImages,
-        [placeholder]: imageUrl,
-      }));
-    } catch (error) {
-      Alert.alert('Image Generation Error', `Failed to regenerate image for: ${description}`);
-    } finally {
-      setLoadingImages((prev) => ({ ...prev, [placeholder]: false }));
+      }
     }
-  };
 
-  /**
-   * Removes an image at a specified index from the story parts.
-   * @param index - The index of the image to remove.
-   */
-  const handleRemoveImage = (index: number) => {
-    Alert.alert(
-      'Remove Image',
-      'Are you sure you want to remove this image?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => {
-            const newStoryParts = [...storyParts];
-            const removedPart = newStoryParts.splice(index, 1)[0];
-            setStoryParts(newStoryParts);
-
-            if (removedPart.type === 'image' && removedPart.placeholder) {
-              setImages((prevImages) => {
-                const newImages = { ...prevImages };
-                delete newImages[removedPart.placeholder!];
-                return newImages;
-              });
-            }
-          },
-        },
-      ],
-      { cancelable: true }
+    launchImageLibrary(
+      {
+        mediaType: 'photo',
+        selectionLimit: 5,
+        quality: 0.8,
+        maxWidth: 1920,
+        maxHeight: 1080,
+      },
+      (response) => {
+        if (response.didCancel) {
+          console.log('User cancelled image picker');
+        } else if (response.errorCode) {
+          console.error('ImagePicker Error:', response.errorMessage);
+          Alert.alert('Error', response.errorMessage || 'Failed to pick image');
+        } else if (response.assets && response.assets.length > 0) {
+          const newImages = response.assets.map((asset) => asset.uri!).filter(Boolean);
+          setCarouselImages((prev) => [...prev, ...newImages]);
+        }
+      }
     );
-  };
+  }, []);
 
-  /**
-   * Navigates to the Preview screen with the reconstructed story text and images.
-   */
-  const handleNext = () => {
-    const reconstructedStoryText = storyParts
-      .map((part) => (part.type === 'image' ? part.placeholder : part.content))
-      .join('\n\n');
+  // Handle Image Selection from Carousel
+  const handleSelectImage = useCallback(
+    (uri: string) => {
+      if (!selectedImages.includes(uri)) {
+        const newImagePart: StoryPart = {
+          id: `image-${Date.now()}`,
+          type: 'image',
+          uri,
+        };
+        setStoryParts((prev) => [newImagePart, ...prev]);
+        setSelectedImages((prev) => [...prev, uri]);
+      }
+    },
+    [selectedImages]
+  );
 
-    navigation.navigate('Preview', { storyText: reconstructedStoryText, images });
-  };
+  // Handle Deleting Image from Story
+  const handleDeleteImage = useCallback(
+    (id: string) => {
+      setStoryParts((prev) => prev.filter((part) => part.id !== id));
+      const deletedPart = storyParts.find((part) => part.id === id);
+      if (deletedPart?.uri) {
+        setSelectedImages((prev) => prev.filter((uri) => uri !== deletedPart.uri));
+      }
+    },
+    [storyParts]
+  );
 
-  /**
-   * Renders the story parts (text inputs and images).
-   */
-  const renderStory = () => {
-    return storyParts.map((part, index) => {
-      if (part.type === 'image') {
-        const placeholder = part.placeholder!;
-        const imageUrl = images[placeholder];
-        const isLoading = loadingImages[placeholder];
+  // Render Story Part
+  const renderStoryPart = useCallback(
+    ({ item, drag }: RenderItemParams<StoryPart>) => {
+      if (item.type === 'text') {
         return (
-          <View key={index} style={styles.imageContainer}>
-            {isLoading ? (
-              <ActivityIndicator size="large" color="#4285F4" style={styles.loadingIndicator} />
-            ) : imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={styles.image} />
-            ) : (
-              <Text style={styles.errorText}>Failed to load image.</Text>
-            )}
-            <View style={styles.iconButtons}>
-              <TouchableOpacity onPress={() => handleRegenerateImage(placeholder)}>
-                <RetryIcon size={24} color="#4285F4" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleRemoveImage(index)}>
-                <DustbinIcon size={24} color="#EA4335" />
-              </TouchableOpacity>
-            </View>
+          <View key={item.id} style={styles.textContainer}>
+            <Text style={styles.storyText}>{item.content}</Text>
           </View>
         );
-      } else if (part.type === 'text') {
-        return (
-          <TextInput
-            key={index}
-            style={styles.storyText}
-            multiline
-            value={part.content}
-            onChangeText={(text) => {
-              const newStoryParts = [...storyParts];
-              newStoryParts[index].content = text;
-              setStoryParts(newStoryParts);
-            }}
-          />
-        );
       } else {
-        return null;
-      }
-    });
-  };
-
-  /**
-   * Renders the image carousel at the top of the screen.
-   */
-  const renderImageCarousel = () => {
-    const imageParts = storyParts.filter((part) => part.type === 'image');
-    if (imageParts.length === 0) return null;
-
-    return (
-      <View style={styles.carouselContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {imageParts.map((part, index) => {
-            const placeholder = part.placeholder!;
-            const imageUrl = images[placeholder];
-            const isLoading = loadingImages[placeholder];
-            return (
-              <View key={index} style={styles.carouselImageContainer}>
-                {isLoading ? (
-                  <ActivityIndicator size="small" color="#4285F4" />
-                ) : imageUrl ? (
-                  <Image source={{ uri: imageUrl }} style={styles.carouselImage} />
-                ) : (
-                  <Text style={styles.errorText}>Image not available.</Text>
-                )}
+        const isLoading = loadingImages[item.uri!];
+        return (
+          <View key={item.id} style={styles.imageContainer}>
+            <TouchableOpacity style={styles.dragHandleContainer} onPressIn={drag}>
+              <View style={styles.dragHandle}>
+                <HamburgerIcon size={24} color="#FFFFFF" />
               </View>
-            );
-          })}
-        </ScrollView>
-      </View>
-    );
-  };
+            </TouchableOpacity>
+            {isLoading ? (
+              <ActivityIndicator size="large" color="#4285F4" style={styles.loadingIndicator} />
+            ) : (
+              <Image source={{ uri: item.uri }} style={styles.droppedImage} />
+            )}
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => handleDeleteImage(item.id)}
+            >
+              <DustbinIcon size={20} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        );
+      }
+    },
+    [handleDeleteImage, loadingImages]
+  );
 
   return (
-    <>
-      <TopBar title="Edit Your Story" currentStep={3} totalSteps={5} />
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        {renderImageCarousel()}
-        <ScrollView
-          contentContainerStyle={styles.contentContainer}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
-        >
-          {renderStory()}
-        </ScrollView>
-      </KeyboardAvoidingView>
-      <BottomBar
-        currentStep={3}
-        totalSteps={5}
-        onNext={handleNext}
-        onBack={() => navigation.goBack()}
-        isNextEnabled={true}
-      />
-    </>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        <TopBar title="Edit Your Story" currentStep={3} totalSteps={5} />
+        <View style={styles.carouselContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{alignItems: 'center'}}>
+            <TouchableOpacity onPress={handleAddImage} style={styles.addImagePlaceholder}>
+              <PlusIcon size={30} color="#666" />
+            </TouchableOpacity>
+            {carouselImages.map((uri, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => handleSelectImage(uri)}
+                style={selectedImages.includes(uri) ? styles.selectedImage : styles.carouselImageContainer}
+              >
+                <Image source={{ uri }} style={styles.carouselImage} />
+                {selectedImages.includes(uri) && (
+                  <View style={styles.checkIconContainer}>
+                    <CheckIcon size={40} color="#FFFFFF" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+        <View style={styles.listContainer}>
+          <DraggableFlatList
+            data={storyParts}
+            onDragEnd={({ data }) => setStoryParts(data)}
+            keyExtractor={(item) => item.id}
+            renderItem={renderStoryPart}
+            contentContainerStyle={styles.storyContentContainer}
+          />
+        </View>
+        <BottomBar
+          currentStep={3}
+          totalSteps={5}
+          onNext={() => navigation.navigate('Preview', { storyParts })}
+          onBack={() => navigation.goBack()}
+          isNextEnabled={true}
+        />
+      </View>
+    </GestureHandlerRootView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  contentContainer: {
-    padding: 16,
     backgroundColor: '#F9F9F9',
+  },
+  carouselContainer: {
+    height: IMAGE_SIZE + 40,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    paddingVertical: 10,
+  },
+  listContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+  },
+  storyContentContainer: {
     paddingBottom: 16,
-    flexGrow: 1,
+  },
+  addImagePlaceholder: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CCC',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  carouselImageContainer: {
+    marginHorizontal: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  selectedImage: {
+    marginHorizontal: 5,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#666',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    position: 'relative',
+  },
+  checkIconContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -25 }, { translateY: -30 }],
+    borderRadius: 20,
+    padding: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  },
+  carouselImage: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
+    borderRadius: 8,
+    resizeMode: 'cover',
+  },
+  textContainer: {
+    marginBottom: 16,
   },
   storyText: {
     fontSize: 16,
     color: '#333',
-    marginBottom: 12,
-    padding: 12,
+    lineHeight: 24,
     backgroundColor: '#FFF',
+    padding: 12,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    textAlignVertical: 'top',
-    fontFamily: 'Poppins-Regular',
-    minHeight: 80,
   },
   imageContainer: {
     marginVertical: 16,
@@ -316,8 +308,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     alignItems: 'center',
+    position: 'relative',
   },
-  image: {
+  droppedImage: {
     width: '100%',
     height: 200,
     borderRadius: 8,
@@ -326,33 +319,25 @@ const styles = StyleSheet.create({
   loadingIndicator: {
     marginBottom: 8,
   },
-  errorText: {
-    fontSize: 16,
-    color: 'red',
-    marginBottom: 8,
-    fontFamily: 'Poppins-Regular',
+  deleteButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#FF0000',
+    borderRadius: 12,
+    padding: 8,
   },
-  iconButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 12,
-    width: '50%',
+  dragHandleContainer: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 12,
   },
-  carouselContainer: {
-    paddingVertical: 10,
-    backgroundColor: '#F9F9F9',
-  },
-  carouselImageContainer: {
-    marginHorizontal: 5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  carouselImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-    resizeMode: 'cover',
+  dragHandle: {
+    padding: 8,
   },
 });
 
-export default StoryEditorScreen;
+export default memo(StoryEditorScreen);

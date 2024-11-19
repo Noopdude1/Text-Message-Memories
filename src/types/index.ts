@@ -14,10 +14,19 @@ export interface Conversation {
   navigationAddress: string;
 }
 
+export interface StoryPart {
+  id: string;
+  type: 'text' | 'image';
+  content?: string;
+  uri?: string;
+}
+
 export interface NavigationParams extends ParamListBase {
   Conversations: undefined;
   ConversationDetails: { address: string };
   Login: undefined;
   StoryEditor: { storyContent: string };
-  Preview: { storyText: string; images: { [key: string]: string } };
+  Preview: {
+    storyParts: StoryPart[];
+  };
 }
