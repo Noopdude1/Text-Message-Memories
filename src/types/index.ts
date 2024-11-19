@@ -25,7 +25,7 @@ export interface NavigationParams extends ParamListBase {
   Conversations: undefined;
   ConversationDetails: { address: string };
   Login: undefined;
-  StoryEditor: { storyContent: string };
+  StoryEditor: { prompt: string, messages: SMSMessage[] };
   Preview: {
     storyParts: StoryPart[];
   };

@@ -1,6 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
+import {
+  RouteProp,
+  useNavigation,
+  useRoute
+} from '@react-navigation/native';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Alert,
+} from 'react-native';
 import SmsAndroid from 'react-native-get-sms-android';
 import BottomBar from '../../components/BottomBar';
 import ErrorComponent from '../../components/ErrorComponent';
@@ -8,9 +20,7 @@ import LoadingComponent from '../../components/LoadingComponent';
 import TopBar from '../../components/TopBar';
 import { NavigationParams, SMSMessage } from '../../types';
 import { PROMPTS } from '../../utils/constants';
-import { generateStory } from '../../utils/openAiHelper';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import StoryEditorSkeleton from '../../components/StoryEditorSkeleton';
 
 interface RouteParams {
   address: string;
@@ -24,14 +34,13 @@ type ConversationDetailsScreenNavigationProp = NativeStackNavigationProp<
 const ConversationDetailsScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   const { address } = route.params;
+  const navigation = useNavigation<ConversationDetailsScreenNavigationProp>();
+
   const [messages, setMessages] = useState<SMSMessage[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(PROMPTS[0].title);
   const [customPrompt, setCustomPrompt] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadingNext, setLoadingNext] = useState(false);
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  const navigation = useNavigation<ConversationDetailsScreenNavigationProp>();
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -68,16 +77,7 @@ const ConversationDetailsScreen: React.FC = () => {
       PROMPTS.find((prompt) => prompt.title === selectedPrompt)?.details || customPrompt;
 
     if (selectedDetails) {
-      setLoadingNext(true);
-      setGenerationError(null);
-      const story = await generateStory({ prompt: selectedDetails, messages });
-      setLoadingNext(false);
-
-      if (story) {
-        navigation.navigate('StoryEditor', { storyContent: story });
-      } else {
-        setGenerationError('Failed to generate story. Please try again.');
-      }
+      navigation.navigate('StoryEditor', { prompt: selectedDetails, messages });
     } else {
       Alert.alert('Please select or enter a prompt');
     }
@@ -88,15 +88,13 @@ const ConversationDetailsScreen: React.FC = () => {
     setCustomPrompt('');
   };
 
-  if (loading) return <LoadingComponent message="Fetching messages..." />;
-  if (error) return <ErrorComponent message={error} onRetry={() => setLoading(true)} />;
-  if (loadingNext) return <><TopBar title="Text Story Creator" currentStep={2} totalSteps={5} /><StoryEditorSkeleton/><BottomBar
-  currentStep={2}
-  totalSteps={5}
-  onNext={handleNext}
-  onBack={() => navigation.goBack()}
-  isNextEnabled={false}
-/></>
+  if (loading) {
+    return <LoadingComponent message="Fetching messages..." />;
+  }
+
+  if (error) {
+    return <ErrorComponent message={error} onRetry={() => setLoading(true)} />;
+  }
 
   return (
     <>
@@ -118,12 +116,6 @@ const ConversationDetailsScreen: React.FC = () => {
             </TouchableOpacity>
           ))}
 
-          {generationError && (
-            <ErrorComponent
-              message={generationError}
-              onRetry={handleNext}
-            />
-          )}
           <View style={styles.customPromptContainer}>
             <Text style={styles.customPromptTitle}>Custom Prompt</Text>
             <TextInput
@@ -139,9 +131,6 @@ const ConversationDetailsScreen: React.FC = () => {
             />
           </View>
 
-          {generationError && (
-            <ErrorComponent message={generationError} onRetry={handleNext} />
-          )}
         </ScrollView>
       </View>
       <BottomBar

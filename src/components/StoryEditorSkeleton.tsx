@@ -1,182 +1,76 @@
-import React, { useEffect } from 'react';
-import { Animated, Easing, ScrollView, StyleSheet, View } from 'react-native';
-import Card from './Card';
+import React from 'react';
+import ContentLoader, { Rect } from 'react-content-loader/native';
+import { View, StyleSheet, Dimensions } from 'react-native';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const PADDING = 16;
+const CONTENT_WIDTH = SCREEN_WIDTH - (PADDING * 2);
 const IMAGE_SIZE = 100;
 
-
-const SkeletonPulse = () => {
-  const animatedValue = new Animated.Value(0);
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(animatedValue, {
-          toValue: 1,
-          duration: 1200,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(animatedValue, {
-          toValue: 0,
-          duration: 1200,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
-
-  const opacity = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.8],
-  });
-
-  const scale = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.05],
-  });
-
-  const translateY = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 10],
-  });
-
-  const rotate = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '5deg'],
-  });
-
+const StoryEditorSkeleton: React.FC = () => {
   return (
-    <Animated.View style={[styles.pulseContainer, { opacity, transform: [{ scale }, { translateY }, { rotate }] }]}>
-      <View style={styles.pulse} />
-    </Animated.View>
+    <View style={styles.container}>
+      {/* Image carousel skeleton */}
+      <View style={styles.carouselContainer}>
+        <ContentLoader
+          speed={1}
+          width={SCREEN_WIDTH}
+          height={IMAGE_SIZE + 40}
+          backgroundColor="#f3f3f3"
+          foregroundColor="#ecebeb"
+        >
+          {/* Add image placeholder */}
+          <Rect x={PADDING} y={20} width={IMAGE_SIZE} height={IMAGE_SIZE} rx={8} />
+
+          {/* Image thumbnails */}
+          <Rect x={PADDING + IMAGE_SIZE + 10} y={20} width={IMAGE_SIZE} height={IMAGE_SIZE} rx={8} />
+          <Rect x={PADDING + (IMAGE_SIZE * 2) + 20} y={20} width={IMAGE_SIZE} height={IMAGE_SIZE} rx={8} />
+          <Rect x={PADDING + (IMAGE_SIZE * 3) + 30} y={20} width={IMAGE_SIZE} height={IMAGE_SIZE} rx={8} />
+        </ContentLoader>
+      </View>
+
+      {/* Story content skeleton */}
+      <View style={styles.contentContainer}>
+        <ContentLoader
+          speed={1}
+          width={CONTENT_WIDTH}
+          height={600}
+          backgroundColor="#f3f3f3"
+          foregroundColor="#ecebeb"
+        >
+          {/* First paragraph */}
+          <Rect x={0} y={0} width={CONTENT_WIDTH} height={100} rx={8} />
+
+          {/* Image block */}
+          <Rect x={0} y={120} width={CONTENT_WIDTH} height={200} rx={8} />
+
+          {/* Second paragraph */}
+          <Rect x={0} y={340} width={CONTENT_WIDTH} height={80} rx={8} />
+
+          {/* Third paragraph */}
+          <Rect x={0} y={440} width={CONTENT_WIDTH} height={120} rx={8} />
+        </ContentLoader>
+      </View>
+    </View>
   );
 };
 
-const ImageGallerySkeleton = () => (
-  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryContainer}>
-    {[1, 2, 3, 4].map((key) => (
-      <View key={key} style={styles.imageSkeleton}>
-        <SkeletonPulse />
-      </View>
-    ))}
-  </ScrollView>
-);
-
-const ContentBlockSkeleton = () => (
-  <View style={styles.blockContainer}>
-    {[1, 2, 3].map((key) => (
-      <View key={key} style={styles.textBlock}>
-        <SkeletonPulse />
-      </View>
-    ))}
-  </View>
-);
-
-const CarouselSkeleton = () => (
-  <View style={styles.carouselContainer}>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center' }}>
-      {[1, 2, 3, 4].map((key) => (
-        <View key={key} style={styles.carouselImageSkeleton}>
-          <SkeletonPulse />
-        </View>
-      ))}
-    </ScrollView>
-  </View>
-);
-
-const StoryPartSkeleton = () => (
-  <View style={styles.listContainer}>
-    {[1, 2, 3].map((key) => (
-      <View key={key} style={styles.storyPartSkeleton}>
-        <SkeletonPulse />
-      </View>
-    ))}
-  </View>
-);
-
-export default function StoryEditorSkeleton() {
-  return (
-    <Card style={styles.card}>
-      <View style={styles.container}>
-        <CarouselSkeleton />
-        <StoryPartSkeleton />
-      </View>
-    </Card>
-  );
-}
-
 const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
   container: {
     flex: 1,
     backgroundColor: '#F9F9F9',
-  },
-  galleryContainer: {
-    padding: 16,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  imageSkeleton: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-    marginRight: 12,
-    overflow: 'hidden',
-  },
-  blockContainer: {
-    padding: 16,
-  },
-  textBlock: {
-    height: 120,
-    borderRadius: 8,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
-  pulseContainer: {
-    flex: 1,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 8,
-  },
-  pulse: {
-    flex: 1,
-    backgroundColor: '#E8E8E8',
-    borderRadius: 8,
   },
   carouselContainer: {
     height: IMAGE_SIZE + 40,
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
-    paddingVertical: 10,
   },
-  carouselImageSkeleton: {
-    width: IMAGE_SIZE,
-    height: IMAGE_SIZE,
-    borderRadius: 8,
-    marginHorizontal: 5,
-    overflow: 'hidden',
-  },
-  listContainer: {
+  contentContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: PADDING,
     paddingTop: 20,
   },
-  storyPartSkeleton: {
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 16,
-    overflow: 'hidden',
-  },
 });
+
+export default StoryEditorSkeleton;

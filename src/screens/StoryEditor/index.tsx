@@ -1,8 +1,5 @@
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import React, { memo, useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Image,
   PermissionsAndroid,
@@ -11,15 +8,19 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { CheckIcon, DustbinIcon, HamburgerIcon, PlusIcon } from '../../Assets/Icons';
 import BottomBar from '../../components/BottomBar';
 import TopBar from '../../components/TopBar';
-import { NavigationParams } from '../../types';
+import StoryEditorSkeleton from '../../components/StoryEditorSkeleton';
+import { NavigationParams, SMSMessage } from '../../types';
+import { generateStory } from '../../utils/openAiHelper';
 
 const IMAGE_SIZE = 100;
 
@@ -36,21 +37,22 @@ type StoryEditorScreenNavigationProp = NativeStackNavigationProp<
 >;
 
 interface StoryEditorScreenRouteParams {
-  storyContent: string;
+  prompt: string;
+  messages: SMSMessage[];
 }
 
-const StoryEditorScreen = () => {
+const StoryEditorScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: StoryEditorScreenRouteParams }, 'params'>>();
   const navigation = useNavigation<StoryEditorScreenNavigationProp>();
-  const { storyContent } = route.params;
+  const { prompt, messages } = route.params;
 
   const [storyParts, setStoryParts] = useState<StoryPart[]>([]);
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
-  const [loadingImages, setLoadingImages] = useState<{ [key: string]: boolean }>({});
+  const [loading, setLoading] = useState(true);
+  const [storyContent, setStoryContent] = useState('');
 
-  // Initialize story parts with correct type annotations
-  const initializeStoryParts = useCallback(() => {
+  useEffect(() => {
     if (!storyContent) return;
 
     const paragraphs = storyContent
@@ -63,13 +65,19 @@ const StoryEditorScreen = () => {
       }));
 
     setStoryParts(paragraphs);
+    setLoading(false);
   }, [storyContent]);
 
   useEffect(() => {
-    initializeStoryParts();
-  }, [initializeStoryParts]);
+    const fetchStoryParts = async () => {
+      setLoading(true);
+      const story = await generateStory({ prompt, messages });
+      setStoryContent(story || '');
+    };
 
-  // Handle Image Selection
+    fetchStoryParts();
+  }, [prompt, messages]);
+
   const handleAddImage = useCallback(async () => {
     if (Platform.OS === 'android') {
       const permission =
@@ -113,7 +121,6 @@ const StoryEditorScreen = () => {
     );
   }, []);
 
-  // Handle Image Selection from Carousel
   const handleSelectImage = useCallback(
     (uri: string) => {
       if (!selectedImages.includes(uri)) {
@@ -129,7 +136,6 @@ const StoryEditorScreen = () => {
     [selectedImages]
   );
 
-  // Handle Deleting Image from Story
   const handleDeleteImage = useCallback(
     (id: string) => {
       setStoryParts((prev) => prev.filter((part) => part.id !== id));
@@ -141,7 +147,6 @@ const StoryEditorScreen = () => {
     [storyParts]
   );
 
-  // Render Story Part
   const renderStoryPart = useCallback(
     ({ item, drag }: RenderItemParams<StoryPart>) => {
       if (item.type === 'text') {
@@ -151,7 +156,6 @@ const StoryEditorScreen = () => {
           </View>
         );
       } else {
-        const isLoading = loadingImages[item.uri!];
         return (
           <View key={item.id} style={styles.imageContainer}>
             <TouchableOpacity style={styles.dragHandleContainer} onPressIn={drag}>
@@ -159,11 +163,7 @@ const StoryEditorScreen = () => {
                 <HamburgerIcon size={24} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
-            {isLoading ? (
-              <ActivityIndicator size="large" color="#4285F4" style={styles.loadingIndicator} />
-            ) : (
-              <Image source={{ uri: item.uri }} style={styles.droppedImage} />
-            )}
+            <Image source={{ uri: item.uri }} style={styles.droppedImage} />
             <TouchableOpacity
               style={styles.deleteButton}
               onPress={() => handleDeleteImage(item.id)}
@@ -174,15 +174,31 @@ const StoryEditorScreen = () => {
         );
       }
     },
-    [handleDeleteImage, loadingImages]
+    [handleDeleteImage]
   );
+
+  if (loading) {
+    return (
+      <>
+        <TopBar title="Text Story Creator" currentStep={3} totalSteps={5} />
+        <StoryEditorSkeleton />
+        <BottomBar
+          currentStep={3}
+          totalSteps={5}
+          onNext={() => {}}
+          onBack={() => navigation.goBack()}
+          isNextEnabled={false}
+        />
+      </>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
         <TopBar title="Edit Your Story" currentStep={3} totalSteps={5} />
         <View style={styles.carouselContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{alignItems: 'center'}}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center' }}>
             <TouchableOpacity onPress={handleAddImage} style={styles.addImagePlaceholder}>
               <PlusIcon size={30} color="#666" />
             </TouchableOpacity>
@@ -190,7 +206,7 @@ const StoryEditorScreen = () => {
               <TouchableOpacity
                 key={index}
                 onPress={() => handleSelectImage(uri)}
-                style={selectedImages.includes(uri) ? styles.selectedImage : styles.carouselImageContainer}
+                style={styles.carouselImageContainer}
               >
                 <Image source={{ uri }} style={styles.carouselImage} />
                 {selectedImages.includes(uri) && (
@@ -221,7 +237,7 @@ const StoryEditorScreen = () => {
       </View>
     </GestureHandlerRootView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -260,15 +276,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-  selectedImage: {
-    marginHorizontal: 5,
+  carouselImage: {
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
     borderRadius: 8,
-    borderWidth: 2,
-    borderColor: '#666',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    position: 'relative',
+    resizeMode: 'cover',
   },
   checkIconContainer: {
     position: 'absolute',
@@ -278,12 +290,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 4,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  },
-  carouselImage: {
-    width: IMAGE_SIZE,
-    height: IMAGE_SIZE,
-    borderRadius: 8,
-    resizeMode: 'cover',
   },
   textContainer: {
     marginBottom: 16,
@@ -315,9 +321,6 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 8,
     resizeMode: 'cover',
-  },
-  loadingIndicator: {
-    marginBottom: 8,
   },
   deleteButton: {
     position: 'absolute',
