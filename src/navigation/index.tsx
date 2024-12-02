@@ -5,10 +5,12 @@ import useGoogleAuth from '../hooks/useGoogleAuth';
 import ConversationDetailsScreen from '../screens/ConversationDetails';
 import ConversationsScreen from '../screens/Conversations';
 import LoginScreen from '../screens/LoginScreen';
-
-import { NavigationParams } from '../types';
 import StoryEditorScreen from '../screens/StoryEditor';
 import PreviewScreen from '../screens/Preview';
+
+import { NavigationParams } from '../types';
+import CartScreen from '../screens/Cart';
+import CheckoutScreen from '../screens/Checkout';
 
 const Stack = createNativeStackNavigator<NavigationParams>();
 
@@ -39,6 +41,17 @@ const AppNavigator: React.FC = () => {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="Cart"
+          component={CartScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Checkout"
+          component={CheckoutScreen}
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
           name="Login"
           component={LoginScreen}
           options={{ headerShown: false }}
@@ -47,6 +60,5 @@ const AppNavigator: React.FC = () => {
     </NavigationContainer>
   );
 };
-
 
 export default AppNavigator;

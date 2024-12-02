@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, {Path, Polygon, Polyline} from 'react-native-svg';
+import Svg, {Path, Polygon, Polyline, Rect} from 'react-native-svg';
 
 interface IconProps {
   size?: number;
@@ -162,3 +162,44 @@ export const CheckIcon: React.FC<IconProps> = ({ size = 24, color = '#000', ...p
     />
   </Svg>
 );
+
+export const LockIcon: React.FC<IconProps> = ({
+  size = 24,
+  color = '#000',
+  secondaryColor = 'rgb(44, 169, 188)',
+  strokeWidth = 2,
+  ...props
+}) => (
+  <Svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={color}
+    strokeWidth={strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <Rect
+      x={6}
+      y={10}
+      width={12}
+      height={10}
+      rx={2}
+      stroke={color}
+      strokeWidth={strokeWidth}
+    />
+    <Path
+      d="M8 10V7a4 4 0 1 1 8 0v3"
+      stroke={color}
+      strokeWidth={strokeWidth}
+    />
+    <Path
+      d="M12 15a1.5 1.5 0 1 1 1.5-1.5A1.5 1.5 0 0 1 12 15zM12 17v-1"
+      stroke={color}
+      strokeWidth={strokeWidth}
+    />
+  </Svg>
+);
+

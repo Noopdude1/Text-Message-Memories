@@ -1,113 +1,235 @@
-// src/screens/Preview/index.tsx
-
-import React from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, Alert } from 'react-native';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Alert,
+  StatusBar,
+  TouchableOpacity,
+  Platform,
+  PermissionsAndroid,
+} from 'react-native';
+import { useNavigation, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { WebView } from 'react-native-webview';
+import { NavigationParams, StoryPart } from '../../types';
+import { generatePDF } from '../../utils/htmlToPDFHelper';
+import { uploadToCloudinary } from '../../utils/cloudinaryHelper';
+import LottieView from 'lottie-react-native';
 import TopBar from '../../components/TopBar';
 import BottomBar from '../../components/BottomBar';
-import { NavigationParams } from '../../types';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useCart } from '../../context/CartContext';
 
-type PreviewScreenNavigationProp = NativeStackNavigationProp<
-  NavigationParams,
-  'Preview'
->;
+type PreviewScreenNavigationProp = NativeStackNavigationProp<NavigationParams, 'Preview'>;
+type PreviewScreenRouteProp = RouteProp<NavigationParams, 'Preview'>;
 
-interface PreviewScreenRouteParams {
-  storyParts: StoryPart[];
+interface PreviewScreenProps {
+  route: PreviewScreenRouteProp;
 }
 
-interface StoryPart {
-  id: string;
-  type: 'text' | 'image';
-  content?: string;
-  uri?: string;
-}
-
-const PreviewScreen: React.FC = () => {
-  const route = useRoute<RouteProp<{ params: PreviewScreenRouteParams }, 'params'>>();
+const PreviewScreen: React.FC<PreviewScreenProps> = ({ route }) => {
   const navigation = useNavigation<PreviewScreenNavigationProp>();
   const { storyParts } = route.params;
+  const { addToCart } = useCart();
 
-  /**
-   * Renders the story by mapping over the story parts.
-   * Text parts are displayed as Text components.
-   * Image parts are displayed as Image components.
-   */
-  const renderStory = () => {
-    return storyParts.map((part) => {
-      if (part.type === 'text') {
-        return (
-          <Text key={part.id} style={styles.storyText}>
-            {part.content}
-          </Text>
+  const [isGenerating, setIsGenerating] = useState(true);
+  const [pdfCloudUrl, setPdfCloudUrl] = useState<string | null>(null);
+  const [webViewError, setWebViewError] = useState<boolean>(false);
+
+  const ensureStoragePermissions = useCallback(async () => {
+    if (Platform.OS === 'android') {
+      const permissions =
+        Platform.Version >= 33
+          ? [PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES]
+          : [
+              PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+              PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+            ];
+
+      const granted = await PermissionsAndroid.requestMultiple(permissions);
+
+      const allGranted = permissions.every(
+        (permission) => granted[permission] === PermissionsAndroid.RESULTS.GRANTED
+      );
+
+      if (!allGranted) {
+        Alert.alert(
+          'Permissions Required',
+          'Storage permissions are required to generate and save your storybook. Please enable permissions in your device settings.'
         );
-      } else if (part.type === 'image') {
-        return (
-          <View key={part.id} style={styles.imageContainer}>
-            {part.uri ? (
-              <Image source={{ uri: part.uri }} style={styles.image} />
-            ) : (
-              <Text style={styles.errorText}>Image not available.</Text>
-            )}
-          </View>
-        );
-      } else {
-        return null;
+        return false;
       }
+      return true;
+    }
+    return true;
+  }, []);
+
+  const generateAndUploadPDF = useCallback(async () => {
+    try {
+      setIsGenerating(true);
+      setWebViewError(false);
+      await ensureStoragePermissions();
+
+      const pdfPath = await generatePDF(storyParts);
+      if (!pdfPath) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const uploadedUrl = await uploadToCloudinary(`file://${pdfPath}`);
+      if (!uploadedUrl) {
+        throw new Error('Failed to upload PDF to Cloudinary');
+      }
+
+      setPdfCloudUrl(uploadedUrl);
+    } catch (error) {
+      console.error('PDF Generation or Upload Error:', error);
+      Alert.alert('Error', 'Failed to generate or upload PDF. Please try again.');
+      navigation.goBack();
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [storyParts, navigation]);
+
+  useEffect(() => {
+    generateAndUploadPDF();
+  }, [generateAndUploadPDF]);
+
+  const handleAddToCart = () => {
+    if (!pdfCloudUrl) {
+      Alert.alert('Error', 'PDF not ready yet. Please try again.');
+      return;
+    }
+
+    addToCart({
+      id: Date.now().toString(),
+      title: 'My Storybook',
+      content: storyParts.map((part) => part.content || '').join('\n'),
+      pdfPath: pdfCloudUrl,
+      price: 9.99,
+      coverImage: storyParts.find((part) => part.type === 'image')?.uri || '',
     });
+
+    navigation.navigate('Cart');
   };
 
-  /**
-   * Handles the next action (e.g., saving or sharing the story).
-   */
-  const handleNext = () => {
-    // Proceed to the next step (e.g., save or share the story)
-    Alert.alert('Story Completed', 'Your story is ready!');
-  };
+  if (isGenerating) {
+    return <BookAnimation/>
+  }
+
+  if (webViewError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Failed to load the PDF preview.</Text>
+        <TouchableOpacity onPress={generateAndUploadPDF} style={styles.retryButton}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
-    <>
-      <TopBar title="Preview Your Story" currentStep={4} totalSteps={5} />
-      <ScrollView contentContainerStyle={styles.container}>
-        {renderStory()}
-      </ScrollView>
+    <View style={styles.container}>
+      <TopBar title="Storybook Preview" currentStep={4} totalSteps={5} />
+      <WebView
+        source={{ uri: `https://pdf-flipbook-one.vercel.app/?url=https://res.cloudinary.com/needbuddy/image/upload/v1733004074/sample_c0pubo.pdf` }}
+        style={styles.webview}
+        onError={() => setWebViewError(true)}
+        startInLoadingState={true}
+        renderLoading={() => (
+          <BookAnimation message='Loading Book....'/>
+        )}
+      />
       <BottomBar
         currentStep={4}
         totalSteps={5}
-        onNext={handleNext}
+        onNext={handleAddToCart}
         onBack={() => navigation.goBack()}
-        isNextEnabled={true}
+        isNextEnabled={!!pdfCloudUrl && !webViewError}
       />
-    </>
+    </View>
   );
 };
 
+export function BookAnimation({ message = `Generating your storybook...` }) {
+  return (
+    <View style={styles.animationOverlay}>
+      <LottieView
+        source={require('../../Assets/Animations/book-turner.json')}
+        autoPlay
+        loop
+        style={styles.lottieAnimation}
+      />
+      <Text style={styles.loadingText}>{message}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    flex: 1,
+    backgroundColor: '#F9F9F9',
   },
-  storyText: {
-    fontSize: 16,
-    color: '#000',
-    marginBottom: 8,
-    fontFamily: 'Poppins-Regular',
+  webview: {
+    flex: 1,
   },
-  imageContainer: {
-    marginVertical: 16,
+  animationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)', // Slightly opaque background for better visibility
+  },
+  webViewLoading: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  image: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-    resizeMode: 'cover',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9F9F9',
+  },
+  lottieAnimation: {
+    width: 150,
+    height: 150,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    backgroundColor: '#F9F9F9',
   },
   errorText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#D32F2F',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#4285F4',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
-    color: 'red',
-    marginBottom: 8,
-    fontFamily: 'Poppins-Regular',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

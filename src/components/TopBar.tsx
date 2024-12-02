@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { NavigationParams } from '../types';
 import useGoogleAuth from '../hooks/useGoogleAuth';
 import { ShoppingCartIcon } from '../Assets/Icons';
+import { useCart } from '../context/CartContext';
 
 type TopBarProps = {
   title: string;
@@ -18,6 +19,7 @@ const TopBar: React.FC<TopBarProps> = ({ title, currentStep, totalSteps }) => {
   const { user, signOut } = useGoogleAuth();
   const navigation = useNavigation<TopBarNavigationProp>();
   const [modalVisible, setModalVisible] = useState(false);
+  const { cartItems } = useCart();
 
   const handleSignOut = async () => {
     await signOut();
@@ -28,16 +30,20 @@ const TopBar: React.FC<TopBarProps> = ({ title, currentStep, totalSteps }) => {
     setModalVisible(!modalVisible);
   };
 
+  const cartItemCount = cartItems.length;
+
   return (
     <View style={styles.safeArea}>
       <View style={styles.container}>
-        {/* First Row: Title and Cart Button */}
         <View style={styles.headerRow}>
           <Text style={styles.title}>{title}</Text>
           <View style={styles.rightContainer}>
-            <TouchableOpacity style={styles.cartButton}>
-              <ShoppingCartIcon size={16} color="#000000"  style={{marginRight: 5}} />
-              <Text style={styles.cartText}>Cart (0)</Text>
+            <TouchableOpacity
+              style={styles.cartButton}
+              onPress={() => navigation.navigate('Cart')}
+            >
+              <ShoppingCartIcon size={16} color="#000000" style={{ marginRight: 5 }} />
+              <Text style={styles.cartText}>Cart ({cartItemCount})</Text>
             </TouchableOpacity>
             {user && (
               <TouchableOpacity onPress={toggleModal} style={styles.avatarButton}>
@@ -50,7 +56,6 @@ const TopBar: React.FC<TopBarProps> = ({ title, currentStep, totalSteps }) => {
           </View>
         </View>
 
-        {/* Second Row: Step Indicators */}
         <View style={styles.progressRow}>
           <View style={styles.stepsContainer}>
             {Array.from({ length: totalSteps }).map((_, index) => (
@@ -83,7 +88,6 @@ const TopBar: React.FC<TopBarProps> = ({ title, currentStep, totalSteps }) => {
           </View>
         </View>
 
-        {/* Modal for User Info and Sign Out */}
         {user && modalVisible && (
           <Modal transparent={true} visible={modalVisible} animationType="fade">
             <TouchableOpacity style={styles.modalOverlay} onPress={toggleModal}>
@@ -138,15 +142,10 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginRight: 10,
   },
-  cartIcon: {
-    fontSize: 18,
-    color: '#000',
-    marginRight: 5,
-  },
   cartText: {
     fontSize: 14,
     color: '#000000',
-    fontWeight: 700,
+    fontWeight: '700',
     fontFamily: 'Poppins-Regular',
   },
   avatarButton: {

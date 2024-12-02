@@ -9,6 +9,8 @@ type BottomBarProps = {
   onBack: () => void;
   isNextEnabled: boolean;
   loading?: boolean;
+  nextLabel?: string;
+  backLabel?: string;
 };
 
 const BottomBar: React.FC<BottomBarProps> = ({
@@ -18,12 +20,14 @@ const BottomBar: React.FC<BottomBarProps> = ({
   onBack,
   isNextEnabled,
   loading = false,
+  nextLabel = "Next",
+  backLabel = "Back"
 }) => {
   return (
     <View style={styles.container}>
       {currentStep > 1 && (
         <Button
-          title="Back"
+          title={backLabel}
           onPress={onBack}
           style={styles.backButton}
           textStyle={styles.buttonText}
@@ -44,7 +48,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
       <View style={styles.spacer} />
       {currentStep < totalSteps && (
         <Button
-          title="Next"
+          title={nextLabel}
           onPress={onNext}
           loading={loading}
           style={isNextEnabled ? styles.enabledNext : styles.disabledNext}
