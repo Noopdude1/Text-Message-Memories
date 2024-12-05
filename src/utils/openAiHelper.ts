@@ -1,6 +1,6 @@
 import { SMSMessage } from '../types';
 
-const OPENAI_API_KEY = ''; // Replace with your actual API key
+const OPENAI_API_KEY = '';
 
 interface OpenAIResponse {
   choices: Array<{
@@ -52,11 +52,11 @@ export const generateStory = async ({
         {
           role: 'system',
           content:
-            'You are a creative storyteller who crafts engaging narratives based on SMS conversations. Focus on crafting the story based solely on the provided text messages.',
+            'You are a creative storyteller who crafts engaging narratives based on SMS conversations. Focus on crafting the story based solely on the provided text messages. Use "##" at the start of a line to denote section headings for easy identification.',
         },
         {
           role: 'user',
-          content: `Generate a story based on the following prompt: ${prompt}\n\nMessage History:\n${formattedMessages}\n\nPlease create a narrative that incorporates themes and elements from these messages while maintaining privacy.`,
+          content: `Generate a story based on the following prompt: ${prompt}\n\nMessage History:\n${formattedMessages}\n\nPlease create a narrative that incorporates themes and elements from these messages while maintaining privacy. Please mark section headings by starting the line with "##".`,
         },
       ],
       max_tokens: 3200,

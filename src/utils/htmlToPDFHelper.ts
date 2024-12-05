@@ -2,7 +2,6 @@ import RNFS from 'react-native-fs';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import { Platform, Linking, Alert } from 'react-native';
 import { StoryPart } from '../types';
-import { uploadToCloudinary } from './cloudinaryHelper';
 
 export const generateHTMLContent = (storyParts: StoryPart[]): string => {
   return `
@@ -13,38 +12,61 @@ export const generateHTMLContent = (storyParts: StoryPart[]): string => {
         <style>
           @page {
             margin: 40px;
-            size: A4;
+            size: A4; /* Ensures A4 size */
           }
           body {
             font-family: 'Helvetica', sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #ffffff;
+            background-color: #f7f7f7;
+            color: #2c3e50;
+            width: 210mm; /* A4 width */
+            height: 297mm; /* A4 height */
           }
           .content {
-            padding: 40px;
+            padding: 30px;
             box-sizing: border-box;
           }
           .chapter-title {
-            font-size: 24px;
+            font-size: 32px;
             color: #2c3e50;
-            margin-bottom: 30px;
-            font-weight: bold;
+            text-transform: uppercase;
             text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+          }
+          .section-heading {
+            font-size: 24px;
+            color: #34495e;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            text-align: left;
+            font-weight: bold;
           }
           .page-image {
-            width: 100%;
-            height: auto;
-            margin-bottom: 20px;
-            border-radius: 12px;
-            page-break-inside: avoid;
+            display: block;
+            width: 100%; /* Full width within margins */
+            max-width: 180mm; /* Ensure it fits A4 width */
+            height: auto; /* Maintain aspect ratio */
+            object-fit: cover;
+            margin: 20px auto;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
           }
           .page-text {
             font-size: 18px;
-            line-height: 1.6;
-            color: #333;
+            line-height: 1.8;
             margin-bottom: 20px;
-            text-align: left;
+            text-align: justify;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+          }
+          .page-section {
+            margin-bottom: 30px;
           }
         </style>
       </head>
@@ -53,10 +75,22 @@ export const generateHTMLContent = (storyParts: StoryPart[]): string => {
           <div class="chapter-title">My Story</div>
           ${storyParts
             .map((part) => {
-              if (part.type === 'image' && part.uri) {
-                return `<img class="page-image" src="${part.uri}" alt="Story illustration" />`;
+              if (part.type === 'heading' && part.content) {
+                return `
+                  <div class="section-heading">${part.content}</div>
+                `;
+              } else if (part.type === 'image' && part.uri) {
+                return `
+                  <div class="page-section">
+                    <img class="page-image" src="${part.uri}" alt="Story illustration" />
+                  </div>
+                `;
               } else if (part.type === 'text' && part.content) {
-                return `<div class="page-text">${part.content}</div>`;
+                return `
+                  <div class="page-section">
+                    <div class="page-text">${part.content}</div>
+                  </div>
+                `;
               } else {
                 return '';
               }
@@ -67,6 +101,7 @@ export const generateHTMLContent = (storyParts: StoryPart[]): string => {
     </html>
   `;
 };
+
 
 export const generatePDF = async (storyParts: StoryPart[]): Promise<string | null> => {
   try {
@@ -103,15 +138,6 @@ export const generatePDF = async (storyParts: StoryPart[]): Promise<string | nul
   }
 };
 
-export const uploadPDFToCloudinary = async (pdfPath: string): Promise<string | null> => {
-  try {
-    const cloudinaryUrl = await uploadToCloudinary(pdfPath);
-    return cloudinaryUrl;
-  } catch (error) {
-    console.error('Cloudinary upload error:', error);
-    return null;
-  }
-};
 
 export const downloadPDF = async (pdfPath: string): Promise<string | null> => {
   try {

@@ -26,7 +26,7 @@ const IMAGE_SIZE = 100;
 
 interface StoryPart {
   id: string;
-  type: 'image' | 'text';
+  type: 'image' | 'text' | 'heading';
   content?: string;
   uri?: string;
 }
@@ -55,13 +55,13 @@ const StoryEditorScreen: React.FC = () => {
   useEffect(() => {
     if (!storyContent) return;
 
-    const paragraphs = storyContent
+    const paragraphs: StoryPart[] = storyContent
       .split(/\n+/)
-      .filter((p) => p.trim() !== '')
-      .map((paragraph, idx) => ({
-        id: `text-${Date.now()}-${idx}`,
-        type: 'text' as 'text',
-        content: paragraph,
+      .filter((line) => line.trim() !== '')
+      .map((line, idx) => ({
+        id: `${line.startsWith('##') ? 'heading' : 'text'}-${Date.now()}-${idx}`,
+        type: line.startsWith('##') ? 'heading' : 'text',
+        content: line.startsWith('##') ? line.replace(/^##\s*/, '').trim() : line.trim(),
       }));
 
     setStoryParts(paragraphs);
@@ -153,6 +153,12 @@ const StoryEditorScreen: React.FC = () => {
         return (
           <View key={item.id} style={styles.textContainer}>
             <Text style={styles.storyText}>{item.content}</Text>
+          </View>
+        );
+      } else if (item.type === 'heading') {
+        return (
+          <View key={item.id} style={styles.headingContainer}>
+            <Text style={styles.headingText}>{item.content}</Text>
           </View>
         );
       } else {
@@ -258,6 +264,23 @@ const styles = StyleSheet.create({
   },
   storyContentContainer: {
     paddingBottom: 16,
+  },
+  headingContainer: {
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#EFEFEF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DADADA',
+  },
+  headingText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    lineHeight: 28,
   },
   addImagePlaceholder: {
     width: IMAGE_SIZE,

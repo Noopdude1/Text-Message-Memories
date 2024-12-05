@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Alert,
-  StatusBar,
   TouchableOpacity,
   Platform,
   PermissionsAndroid,
@@ -75,7 +74,9 @@ const PreviewScreen: React.FC<PreviewScreenProps> = ({ route }) => {
         throw new Error('Failed to generate PDF');
       }
 
-      const uploadedUrl = await uploadToCloudinary(`file://${pdfPath}`);
+      const uniqueFileName = `storybook_${Date.now()}`;
+
+      const uploadedUrl = await uploadToCloudinary(`file://${pdfPath}`, uniqueFileName);
       if (!uploadedUrl) {
         throw new Error('Failed to upload PDF to Cloudinary');
       }
@@ -89,6 +90,7 @@ const PreviewScreen: React.FC<PreviewScreenProps> = ({ route }) => {
       setIsGenerating(false);
     }
   }, [storyParts, navigation]);
+
 
   useEffect(() => {
     generateAndUploadPDF();
@@ -131,12 +133,12 @@ const PreviewScreen: React.FC<PreviewScreenProps> = ({ route }) => {
     <View style={styles.container}>
       <TopBar title="Storybook Preview" currentStep={4} totalSteps={5} />
       <WebView
-        source={{ uri: `https://pdf-flipbook-one.vercel.app/?url=https://res.cloudinary.com/needbuddy/image/upload/v1733004074/sample_c0pubo.pdf` }}
+        source={{ uri: `https://pdf-flipbook-one.vercel.app/?url=${ pdfCloudUrl ?? "https://res.cloudinary.com/needbuddy/image/upload/v1733004074/sample_c0pubo.pdf"}` }}
         style={styles.webview}
         onError={() => setWebViewError(true)}
         startInLoadingState={true}
         renderLoading={() => (
-          <BookAnimation message='Loading Book....'/>
+          <BookAnimation message='Loading your book....'/>
         )}
       />
       <BottomBar
@@ -181,7 +183,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)', // Slightly opaque background for better visibility
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   webViewLoading: {
     flex: 1,
