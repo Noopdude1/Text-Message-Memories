@@ -107,7 +107,7 @@ const PreviewScreen: React.FC<PreviewScreenProps> = ({ route }) => {
       title: 'My Storybook',
       content: storyParts.map((part) => part.content || '').join('\n'),
       pdfPath: pdfCloudUrl,
-      price: 9.99,
+      price: 19.99,
       coverImage: storyParts.find((part) => part.type === 'image')?.uri || '',
     });
 

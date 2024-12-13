@@ -66,7 +66,7 @@ const ConversationsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {loading && <LoadingComponent message="Loading conversations..." />}
-      <TopBar title="Text Story Creator" currentStep={1} totalSteps={4} />
+      <TopBar title="Text Story Creator" currentStep={1} totalSteps={5} />
       <View style={styles.outerContainer}>
         <View style={styles.innerContainer}>
           <Text style={styles.subtitle}>Select Conversation</Text>

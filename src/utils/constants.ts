@@ -11,12 +11,12 @@ export const PROMPTS = [
         • Include context about significant dates or events mentioned
         • End with a reflection on their connection
         • Style: Written in third person, romantic but not overly sentimental
-        • Length: Between 2,800-3,200 words (approximately 15-16 pages with photos)
+        • Length: Between 3,500-4,000 words (approximately 20 pages with photos).
         Structure:
-        • Introduction (200-300 words)
-        • Main story (2,200-2,500 words)
-        • Reflection/Conclusion (400 words)
-        • Leave space for 6-8 photos
+        • Introduction (300-400 words)
+        • The blossoming romance (2,500-2,800 words)
+        • Reflection and conclusion (500-600 words)
+        • Space for 8-10 photos with captions.
         Note: Maintain respectful, PG-rated content suitable for all audiences`,
     },
     {
@@ -30,12 +30,12 @@ export const PROMPTS = [
         • Showcase how they've been there for each other
         • Reference shared memories captured in their photos
         • Style: Warm, conversational tone with elements of humor
-        • Length: Between 2,800-3,200 words (approximately 15-16 pages with photos)
+        • Length: Between 3,500-4,000 words (approximately 20 pages with photos).
         Structure:
-        • Introduction (200-300 words)
-        • Key friendship moments (2,200-2,500 words)
-        • Celebration of friendship conclusion (400 words)
-        • Leave space for 6-8 photos
+        • Introduction (300-400 words)
+        • Key moments of friendship (2,500-2,800 words)
+        • A celebration of friendship (500-600 words)
+        • Space for 8-10 photos with captions.
         Note: Focus on the unique aspects of their friendship and shared experiences`,
     },
     {
@@ -49,12 +49,12 @@ export const PROMPTS = [
         • Incorporate family photos and the stories behind them
         • Showcase the evolution of their relationships
         • Style: Warm, inclusive, multi-generational perspective
-        • Length: Between 2,800-3,200 words (approximately 15-16 pages with photos)
+        • Length: Between 3,500-4,000 words (approximately 20 pages with photos).
         Structure:
-        • Family introduction (200-300 words)
-        • Connected moments and memories (2,200-2,500 words)
-        • Family bonds conclusion (400 words)
-        • Leave space for 6-8 photos
+        • Family introduction (300-400 words)
+        • Everyday moments and milestones (2,500-2,800 words)
+        • Reflection on family bonds (500-600 words)
+        • Space for 8-10 photos with captions.
         Note: Emphasize family bonds and shared experiences while respecting privacy`,
     },
     {
@@ -68,12 +68,12 @@ export const PROMPTS = [
         • Show the progression of their relationship through message style and frequency
         • Incorporate significant milestones and shared experiences
         • Style: Chronological narrative with a sense of anticipation and discovery
-        • Length: Between 2,800-3,200 words (approximately 15-16 pages with photos)
+        • Length: Between 3,500-4,000 words (approximately 20 pages with photos).
         Structure:
-        • The beginning (200-300 words)
-        • Development of connection (2,200-2,500 words)
-        • Where they are now (400 words)
-        • Leave space for 6-8 photos
+        • The first exchange (300-400 words)
+        • Developing connection (2,500-2,800 words)
+        • Current status and reflections (500-600 words)
+        • Space for 8-10 photos with captions.
         Note: Focus on the journey of connection while maintaining appropriate privacy`,
     },
   ];

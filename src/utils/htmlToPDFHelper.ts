@@ -11,62 +11,77 @@ export const generateHTMLContent = (storyParts: StoryPart[]): string => {
         <meta charset="UTF-8">
         <style>
           @page {
-            margin: 40px;
-            size: A4; /* Ensures A4 size */
+            size: 12in 12in;
+            margin: 0.5in;
           }
           body {
-            font-family: 'Helvetica', sans-serif;
+            font-family: 'Times New Roman', serif;
             margin: 0;
             padding: 0;
-            background-color: #f7f7f7;
-            color: #2c3e50;
-            width: 210mm; /* A4 width */
-            height: 297mm; /* A4 height */
+            color: #333333;
+            line-height: 1.8;
           }
           .content {
-            padding: 30px;
+            width: 11in;
+            height: 11in;
+            padding: 0.5in;
             box-sizing: border-box;
+            margin: auto;
+            background-color: white;
+            position: relative;
           }
           .chapter-title {
-            font-size: 32px;
+            font-size: 28px;
             color: #2c3e50;
-            text-transform: uppercase;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 0.5in;
             font-weight: bold;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 10px;
+            text-transform: uppercase;
           }
           .section-heading {
-            font-size: 24px;
+            font-size: 18px;
             color: #34495e;
-            margin-top: 20px;
-            margin-bottom: 10px;
+            margin-top: 0.5in;
+            margin-bottom: 0.3in;
             text-align: left;
             font-weight: bold;
+            page-break-after: avoid;
+            page-break-inside: avoid;
           }
           .page-image {
             display: block;
-            width: 100%; /* Full width within margins */
-            max-width: 180mm; /* Ensure it fits A4 width */
-            height: auto; /* Maintain aspect ratio */
+            width: 100%;
+            max-height: 6in;
             object-fit: cover;
-            margin: 20px auto;
-            border-radius: 10px;
-            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-          }
-          .page-text {
-            font-size: 18px;
-            line-height: 1.8;
-            margin-bottom: 20px;
-            text-align: justify;
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
+            margin: 0.3in auto;
+            border-radius: 0.2in;
             box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
           }
+          .page-text {
+            font-size: 12px;
+            margin-bottom: 0.5in;
+            text-align: justify;
+          }
           .page-section {
-            margin-bottom: 30px;
+            margin-bottom: 0.5in;
+            page-break-inside: avoid;
+          }
+          .footer {
+            position: absolute;
+            bottom: 0.3in;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 10px;
+            color: #777;
+          }
+          .page-number:after {
+            content: counter(page);
+          }
+          @media print {
+            .page-break {
+              page-break-before: always;
+            }
           }
         </style>
       </head>
@@ -108,26 +123,47 @@ export const generatePDF = async (storyParts: StoryPart[]): Promise<string | nul
     const processedStoryParts = await Promise.all(
       storyParts.map(async (part) => {
         if (part.type === 'image' && part.uri) {
-          const imagePath = part.uri.startsWith('file://') ? part.uri.replace('file://', '') : part.uri;
-          const base64Data = await RNFS.readFile(imagePath, 'base64');
-          const dataUri = `data:image/jpeg;base64,${base64Data}`;
-          return { ...part, uri: dataUri };
+          try {
+            const imagePath = part.uri.startsWith('file://') ? part.uri.replace('file://', '') : part.uri;
+
+            const fileExists = await RNFS.exists(imagePath);
+            if (!fileExists) {
+              console.warn(`Image file not found: ${imagePath}`);
+              return null;
+            }
+
+            const fileInfo = await RNFS.stat(imagePath);
+            const maxFileSize = 10 * 1024 * 1024;
+            if (fileInfo.size > maxFileSize) {
+              console.warn(`Image file too large: ${imagePath}`);
+              return null;
+            }
+
+            const base64Data = await RNFS.readFile(imagePath, 'base64');
+            return { ...part, uri: `data:image/jpeg;base64,${base64Data}` };
+          } catch (imageError) {
+            console.error(`Error processing image: ${part.uri}`, imageError);
+            return null;
+          }
         }
         return part;
       })
     );
 
-    const htmlContent = generateHTMLContent(processedStoryParts);
+    const validProcessedParts = processedStoryParts.filter(part => part !== null);
+
+    const htmlContent = generateHTMLContent(validProcessedParts);
 
     const options = {
       html: htmlContent,
       fileName: `storybook_${Date.now()}`,
       directory: 'Documents',
-      padding: 0,
-      height: 842,
-      width: 595,
+      width: 12 * 72, // Convert 12 inches to points
+      height: 12 * 72, // Convert 12 inches to points
+      margin: 0.5 * 72, // 0.5-inch margin in points
       backgroundColor: '#ffffff',
     };
+
 
     const result = await RNHTMLtoPDF.convert(options);
 
@@ -137,7 +173,6 @@ export const generatePDF = async (storyParts: StoryPart[]): Promise<string | nul
     return null;
   }
 };
-
 
 export const downloadPDF = async (pdfPath: string): Promise<string | null> => {
   try {

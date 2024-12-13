@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCart } from '../../context/CartContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,6 +16,7 @@ import { NavigationParams, CartItem } from '../../types';
 import TopBar from '../../components/TopBar';
 import BottomBar from '../../components/BottomBar';
 import { DustbinIcon, ShoppingCartIcon } from '../../Assets/Icons';
+import ShippingInfoModal from '../../components/ShippingInfoModal';
 
 type CartScreenNavigationProp = NativeStackNavigationProp<NavigationParams, 'Cart'>;
 
@@ -22,9 +24,37 @@ const CartScreen: React.FC = () => {
   const { cartItems, removeFromCart, clearCart } = useCart();
   const navigation = useNavigation<CartScreenNavigationProp>();
 
-  const totalPrice = useMemo(() => {
-    return cartItems.reduce((sum, item) => sum + item.price, 0).toFixed(2);
-  }, [cartItems]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [shippingInfo, setShippingInfo] = useState({
+    name: '',
+    company: '',
+    address1: '',
+    address2: '',
+    address3: '',
+    city: '',
+    state: '',
+    postal: '',
+    country: '',
+    phone: '',
+    email: '',
+  });
+
+  useEffect(() => {
+    const loadShippingInfo = async () => {
+      try {
+        const savedShippingInfo = await AsyncStorage.getItem('shippingInfo');
+        if (savedShippingInfo) {
+          setShippingInfo(JSON.parse(savedShippingInfo));
+        }
+      } catch (error) {
+        console.error('Error loading shipping info:', error);
+      }
+    };
+
+    loadShippingInfo();
+  }, []);
+
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.price, 0).toFixed(2);
 
   const handleRemoveItem = (id: string) => {
     Alert.alert(
@@ -41,15 +71,36 @@ const CartScreen: React.FC = () => {
     if (cartItems.length === 0) {
       Alert.alert('Cart is Empty', 'Add some items to your cart before proceeding.');
     } else {
-      navigation.navigate('Checkout');
+      setModalVisible(true);
     }
   };
 
-  const handleClearCart = () => {
-    Alert.alert('Clear Cart', 'Are you sure you want to clear the cart?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => clearCart() },
-    ]);
+  const handleSaveShippingInfo = async () => {
+    const requiredFields: (keyof typeof shippingInfo)[] = [
+      'name',
+      'address1',
+      'city',
+      'state',
+      'postal',
+      'country',
+      'phone',
+      'email',
+    ];
+
+    const missingFields = requiredFields.filter((field) => !shippingInfo[field]);
+    if (missingFields.length > 0) {
+      Alert.alert('Error', 'Please fill in all required fields.');
+      return;
+    }
+
+    try {
+      await AsyncStorage.setItem('shippingInfo', JSON.stringify(shippingInfo));
+    } catch (error) {
+      console.error('Error saving shipping info:', error);
+    }
+
+    setModalVisible(false);
+    navigation.navigate('Checkout');
   };
 
   const renderCartItem = ({ item }: { item: CartItem }) => (
@@ -110,10 +161,19 @@ const CartScreen: React.FC = () => {
         currentStep={4}
         totalSteps={5}
         onNext={handleProceedToCheckout}
-        onBack={handleClearCart}
+        onBack={() => clearCart()}
         isNextEnabled={cartItems.length > 0}
         nextLabel="Checkout"
         backLabel="Clear Cart"
+      />
+
+      {/* Shipping Info Modal */}
+      <ShippingInfoModal
+        visible={modalVisible}
+        shippingInfo={shippingInfo}
+        onChangeShippingInfo={(field, value) => setShippingInfo(prev => ({ ...prev, [field]: value }))}
+        onSave={handleSaveShippingInfo}
+        onClose={() => setModalVisible(false)}
       />
     </>
   );
@@ -220,6 +280,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+
 });
 
 export default CartScreen;
