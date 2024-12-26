@@ -26,7 +26,7 @@ const IMAGE_SIZE = 100;
 
 interface StoryPart {
   id: string;
-  type: 'image' | 'text' | 'heading';
+  type: 'text' | 'image' | 'heading' | 'blank';
   content?: string;
   uri?: string;
 }

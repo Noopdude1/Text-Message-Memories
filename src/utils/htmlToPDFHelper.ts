@@ -3,7 +3,34 @@ import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import { Platform, Linking, Alert } from 'react-native';
 import { StoryPart } from '../types';
 
+const WORDS_PER_PAGE = 120;
+const REQUIRED_PAGES = 35;
+
+const BOOK_WIDTH = 4.25;
+const BOOK_HEIGHT = 6.87;
+const MARGIN = 0.5;
+const CONTENT_WIDTH = BOOK_WIDTH - MARGIN * 2;
+const CONTENT_HEIGHT = BOOK_HEIGHT - MARGIN * 2;
+
 export const generateHTMLContent = (storyParts: StoryPart[]): string => {
+  const totalWords = storyParts.reduce((count, part) => {
+    if (part.type === 'text' && part.content) {
+      return count + part.content.split(/\s+/).length;
+    }
+    return count;
+  }, 0);
+
+  const requiredWords = REQUIRED_PAGES * WORDS_PER_PAGE;
+  const neededWords = Math.max(0, requiredWords - totalWords);
+  const placeholderPagesNeeded = Math.ceil(neededWords / WORDS_PER_PAGE);
+
+  const placeholderPages: StoryPart[] = Array.from({ length: placeholderPagesNeeded }, (_, index) => ({
+    id: `placeholder-${index}`,
+    type: 'blank',
+  }));
+
+  const allParts = [...storyParts, ...placeholderPages];
+
   return `
     <!DOCTYPE html>
     <html>
@@ -11,8 +38,8 @@ export const generateHTMLContent = (storyParts: StoryPart[]): string => {
         <meta charset="UTF-8">
         <style>
           @page {
-            size: 12in 12in;
-            margin: 0.5in;
+            size: ${BOOK_WIDTH}in ${BOOK_HEIGHT}in;
+            margin: ${MARGIN}in;
           }
           body {
             font-family: 'Times New Roman', serif;
@@ -20,150 +47,117 @@ export const generateHTMLContent = (storyParts: StoryPart[]): string => {
             padding: 0;
             color: #333333;
             line-height: 1.8;
-          }
-          .content {
-            width: 11in;
-            height: 11in;
-            padding: 0.5in;
-            box-sizing: border-box;
-            margin: auto;
-            background-color: white;
-            position: relative;
+            width: ${CONTENT_WIDTH}in;
+            height: ${CONTENT_HEIGHT}in;
           }
           .chapter-title {
-            font-size: 28px;
+            font-size: 16px;
             color: #2c3e50;
+            height: ${CONTENT_HEIGHT}in;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             text-align: center;
-            margin-bottom: 0.5in;
             font-weight: bold;
             text-transform: uppercase;
+            page-break-before: always;
+            page-break-after: always;
           }
           .section-heading {
-            font-size: 18px;
+            font-size: 14px;
             color: #34495e;
-            margin-top: 0.5in;
-            margin-bottom: 0.3in;
+            margin-top: 0.2in;
+            margin-bottom: 0.2in;
             text-align: left;
             font-weight: bold;
-            page-break-after: avoid;
-            page-break-inside: avoid;
           }
           .page-image {
             display: block;
             width: 100%;
-            max-height: 6in;
+            max-height: 3in;
             object-fit: cover;
-            margin: 0.3in auto;
-            border-radius: 0.2in;
+            margin: 0.2in auto;
+            border-radius: 0.1in;
             box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
           }
           .page-text {
-            font-size: 12px;
-            margin-bottom: 0.5in;
+            font-size: 10px;
+            margin-bottom: 0.3in;
             text-align: justify;
           }
           .page-section {
-            margin-bottom: 0.5in;
+            margin-bottom: 0.3in;
             page-break-inside: avoid;
           }
-          .footer {
-            position: absolute;
-            bottom: 0.3in;
-            left: 0;
-            right: 0;
+          .placeholder-page {
+            height: ${CONTENT_HEIGHT}in;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            color: #999;
             text-align: center;
-            font-size: 10px;
-            color: #777;
-          }
-          .page-number:after {
-            content: counter(page);
-          }
-          @media print {
-            .page-break {
-              page-break-before: always;
-            }
+            font-style: italic;
+            page-break-before: always;
+            page-break-after: always;
           }
         </style>
       </head>
       <body>
-        <div class="content">
-          <div class="chapter-title">My Story</div>
-          ${storyParts
-            .map((part) => {
-              if (part.type === 'heading' && part.content) {
-                return `
-                  <div class="section-heading">${part.content}</div>
-                `;
-              } else if (part.type === 'image' && part.uri) {
-                return `
-                  <div class="page-section">
-                    <img class="page-image" src="${part.uri}" alt="Story illustration" />
-                  </div>
-                `;
-              } else if (part.type === 'text' && part.content) {
-                return `
-                  <div class="page-section">
-                    <div class="page-text">${part.content}</div>
-                  </div>
-                `;
-              } else {
-                return '';
-              }
-            })
-            .join('')}
-        </div>
+        ${allParts
+          .map((part) => {
+            if (part.type === 'heading' && part.content) {
+              return `
+                <div class="chapter-title">${part.content}</div>
+              `;
+            } else if (part.type === 'image' && 'uri' in part && part.uri) {
+              return `
+                <div class="page-section">
+                  <img class="page-image" src="${part.uri}" alt="Story illustration" />
+                </div>
+              `;
+            } else if (part.type === 'text' && part.content) {
+              return `
+                <div class="page-section">
+                  <div class="page-text">${part.content}</div>
+                </div>
+              `;
+            } else if (part.type === 'blank') {
+              return `
+                <div class="placeholder-page">
+                </div>
+              `;
+            }
+            return '';
+          })
+          .join('')}
       </body>
     </html>
   `;
 };
 
-
 export const generatePDF = async (storyParts: StoryPart[]): Promise<string | null> => {
   try {
-    const processedStoryParts = await Promise.all(
-      storyParts.map(async (part) => {
-        if (part.type === 'image' && part.uri) {
-          try {
-            const imagePath = part.uri.startsWith('file://') ? part.uri.replace('file://', '') : part.uri;
+    const pictureCount = storyParts.filter((part) => part.type === 'image' && part.uri).length;
 
-            const fileExists = await RNFS.exists(imagePath);
-            if (!fileExists) {
-              console.warn(`Image file not found: ${imagePath}`);
-              return null;
-            }
+    if (pictureCount < 5) {
+      Alert.alert(
+        'Warning',
+        `You have only added ${pictureCount} pictures. Blank spaces will appear where images are missing.`
+      );
+    }
 
-            const fileInfo = await RNFS.stat(imagePath);
-            const maxFileSize = 10 * 1024 * 1024;
-            if (fileInfo.size > maxFileSize) {
-              console.warn(`Image file too large: ${imagePath}`);
-              return null;
-            }
-
-            const base64Data = await RNFS.readFile(imagePath, 'base64');
-            return { ...part, uri: `data:image/jpeg;base64,${base64Data}` };
-          } catch (imageError) {
-            console.error(`Error processing image: ${part.uri}`, imageError);
-            return null;
-          }
-        }
-        return part;
-      })
-    );
-
-    const validProcessedParts = processedStoryParts.filter(part => part !== null);
-
-    const htmlContent = generateHTMLContent(validProcessedParts);
+    const htmlContent = generateHTMLContent(storyParts);
 
     const options = {
       html: htmlContent,
       fileName: `storybook_${Date.now()}`,
       directory: 'Documents',
-      width: 12 * 72, // Convert 12 inches to points
-      height: 12 * 72, // Convert 12 inches to points
-      margin: 0.5 * 72, // 0.5-inch margin in points
+      width: BOOK_WIDTH * 72,
+      height: BOOK_HEIGHT * 72,
+      margin: MARGIN * 72,
       backgroundColor: '#ffffff',
     };
-
 
     const result = await RNHTMLtoPDF.convert(options);
 
@@ -202,4 +196,3 @@ export const downloadPDF = async (pdfPath: string): Promise<string | null> => {
     return null;
   }
 };
-

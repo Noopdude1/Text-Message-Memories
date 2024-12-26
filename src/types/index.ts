@@ -16,7 +16,7 @@ export interface Conversation {
 
 export interface StoryPart {
   id: string;
-  type: 'text' | 'image' | 'heading';
+  type: 'text' | 'image' | 'heading' | 'blank';
   content?: string;
   uri?: string;
 }

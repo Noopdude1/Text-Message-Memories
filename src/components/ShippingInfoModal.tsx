@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,68 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+
+const stateCodes = [
+  "AL", "AK", "AS", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA",
+  "GU", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA",
+  "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC",
+  "ND", "MP", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX",
+  "UT", "VT", "VI", "VA", "WA", "WV", "WI", "WY",
+];
+
+const statePostalCodeRanges = {
+  AL: { min: 35004, max: 36925 },
+  AK: { min: 99501, max: 99950 },
+  AZ: { min: 85001, max: 86556 },
+  AR: { min: 71601, max: 72959 },
+  CA: { min: 90001, max: 96162 },
+  CO: { min: 80001, max: 81658 },
+  CT: { min: 6001, max: 6928 },
+  DE: { min: 19701, max: 19980 },
+  FL: { min: 32003, max: 34997 },
+  GA: { min: 30002, max: 39901 },
+  HI: { min: 96701, max: 96898 },
+  ID: { min: 83201, max: 83877 },
+  IL: { min: 60001, max: 62999 },
+  IN: { min: 46001, max: 47997 },
+  IA: { min: 50001, max: 52809 },
+  KS: { min: 66002, max: 67954 },
+  KY: { min: 40003, max: 42788 },
+  LA: { min: 70001, max: 71497 },
+  ME: { min: 3901, max: 4992 },
+  MD: { min: 20601, max: 21930 },
+  MA: { min: 1001, max: 2791 },
+  MI: { min: 48001, max: 49971 },
+  MN: { min: 55001, max: 56763 },
+  MS: { min: 38601, max: 39776 },
+  MO: { min: 63001, max: 65899 },
+  MT: { min: 59001, max: 59937 },
+  NE: { min: 68001, max: 69367 },
+  NV: { min: 88901, max: 89883 },
+  NH: { min: 3031, max: 3897 },
+  NJ: { min: 7001, max: 8989 },
+  NM: { min: 87001, max: 88441 },
+  NY: { min: 5001, max: 14925 },
+  NC: { min: 27006, max: 28909 },
+  ND: { min: 58001, max: 58856 },
+  OH: { min: 43001, max: 45999 },
+  OK: { min: 73001, max: 74966 },
+  OR: { min: 97001, max: 97920 },
+  PA: { min: 15001, max: 19640 },
+  RI: { min: 2801, max: 2940 },
+  SC: { min: 29001, max: 29945 },
+  SD: { min: 57001, max: 57799 },
+  TN: { min: 37010, max: 38589 },
+  TX: { min: 73301, max: 88595 },
+  UT: { min: 84001, max: 84791 },
+  VT: { min: 5001, max: 5907 },
+  VA: { min: 20101, max: 24658 },
+  WA: { min: 98001, max: 99403 },
+  WV: { min: 24701, max: 26886 },
+  WI: { min: 53001, max: 54990 },
+  WY: { min: 82001, max: 83414 },
+};
 
 interface ShippingInfo {
   name: string;
@@ -37,6 +99,46 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
   onSave,
   onClose,
 }) => {
+  const [postalError, setPostalError] = useState<string>('');
+
+  const validatePostalCode = (postal: string, state: string) => {
+    if (!postal) {
+      setPostalError('');
+      return;
+    }
+
+    if (!/^\d{5}$/.test(postal)) {
+      setPostalError('Please enter a valid 5-digit postal code');
+      return;
+    }
+
+    if (state && statePostalCodeRanges[state as keyof typeof statePostalCodeRanges]) {
+      const range = statePostalCodeRanges[state as keyof typeof statePostalCodeRanges];
+      const postalNum = parseInt(postal);
+
+      if (postalNum < range.min || postalNum > range.max) {
+        setPostalError(`Invalid postal code for ${state}. Should be between ${range.min}-${range.max}`);
+      } else {
+        setPostalError('');
+      }
+    } else {
+      setPostalError('');
+    }
+  };
+
+  const handlePostalChange = (text: string) => {
+    const cleanedText = text.replace(/\D/g, '').slice(0, 5);
+    onChangeShippingInfo('postal', cleanedText);
+    validatePostalCode(cleanedText, shippingInfo.state);
+  };
+
+  const handleStateChange = (state: string) => {
+    onChangeShippingInfo('state', state);
+    if (shippingInfo.postal) {
+      validatePostalCode(shippingInfo.postal, state);
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -105,24 +207,34 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>State/Province *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter state or province"
-                placeholderTextColor="#999"
-                value={shippingInfo.state}
-                onChangeText={(text) => onChangeShippingInfo('state', text)}
-              />
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={shippingInfo.state}
+                  onValueChange={handleStateChange}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Select a state" value="" style={{color: "#999"}}/>
+                  {stateCodes.map((code) => (
+                    <Picker.Item key={code} label={code} value={code} style={{color: "black"}} />
+                  ))}
+                </Picker>
+              </View>
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Postal Code *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, postalError ? styles.inputError : null]}
                 placeholder="Enter postal code"
                 placeholderTextColor="#999"
                 value={shippingInfo.postal}
-                onChangeText={(text) => onChangeShippingInfo('postal', text)}
+                onChangeText={handlePostalChange}
+                keyboardType="numeric"
+                maxLength={5}
               />
+              {postalError ? (
+                <Text style={styles.errorText}>{postalError}</Text>
+              ) : null}
             </View>
 
             <View style={styles.inputGroup}>
@@ -170,8 +282,9 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.saveButton}
+              style={[styles.saveButton, postalError ? styles.saveButtonDisabled : null]}
               onPress={onSave}
+              disabled={!!postalError}
             >
               <Text style={styles.saveButtonText}>Save & Continue</Text>
             </TouchableOpacity>
@@ -228,6 +341,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  inputError: {
+    borderColor: '#FF4444',
+  },
+  errorText: {
+    color: '#FF4444',
+    fontSize: 12,
+    marginTop: 4,
+  },
   modalFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -256,13 +377,26 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginLeft: 10,
   },
+  saveButtonDisabled: {
+    backgroundColor: '#A4C2F4',
+  },
   saveButtonText: {
     color: '#FFF',
     fontWeight: '600',
     textAlign: 'center',
     fontSize: 16,
   },
+  pickerContainer: {
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+  },
 });
 
 export default ShippingInfoModal;
-

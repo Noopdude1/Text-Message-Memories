@@ -52,14 +52,17 @@ export const generateStory = async ({
         {
           role: 'system',
           content:
-            'You are a creative storyteller who crafts engaging narratives based on SMS conversations. Focus on crafting the story based solely on the provided text messages. Use "##" at the start of a line to denote section headings for easy identification.',
+            'You are a creative storyteller who crafts engaging, detailed narratives based on SMS conversations. Focus on maintaining a clear structure using "##" at the start of a line to denote section headings for easy identification. Expand sections with reflections, anecdotes, and placeholders for photos to meet the required length while maintaining the provided structure.',
         },
         {
           role: 'user',
-          content: `Generate a story based on the following prompt: ${prompt}\n\nMessage History:\n${formattedMessages}\n\nPlease create a narrative that incorporates themes and elements from these messages while maintaining privacy. Please mark section headings by starting the line with "##".`,
+          content: `Generate a detailed story based on the following prompt: ${prompt}\n\nMessage History:\n${formattedMessages}\n\nEnsure the story:
+          - Meets at least 35 pages with thoughtful expansions in each section.
+          - Includes "##" to clearly denote section headings as per the structure.
+          - Expands on key moments, turning points, and shared experiences with creative reflections.`,
         },
       ],
-      max_tokens: 3200,
+      max_tokens: 8000,
       temperature: 0.7,
     };
 

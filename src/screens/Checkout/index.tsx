@@ -18,8 +18,7 @@ import { useCart } from '../../context/CartContext';
 import TopBar from '../../components/TopBar';
 import { LockIcon, ShoppingCartIcon } from '../../Assets/Icons';
 import useGoogleAuth from '../../hooks/useGoogleAuth';
-import axios from 'axios';
-
+import { createLuluPrintJob, LineItem } from '../../utils/luluApiHelper';
 
 type CheckoutScreenNavigationProp = NativeStackNavigationProp<NavigationParams, 'Checkout'>;
 type ShippingInfo = {
@@ -36,12 +35,7 @@ type ShippingInfo = {
   email: string;
 };
 
-
 const STRIPE_PUBLISHABLE_KEY = 'pk_test_51Lv9jTLZIHEwj1YnoEXEOpwW65FA5SbqYXnlw1hX2dUM2OAKJVs5zOhbdgPz0cMFUC2KYSptcd6BNg3AfP9Tcr1b00UPCeMgbL';
-const auth_header = `Basic YXBpX2tleS1lOTgwNTlhZS0xMjQzLTRhNzgtYTU5OS03NmFkY2Q3NmEyYTg6c2VjcmV0LTRiMDNkNmNhLWQ3OGYtNGNlNC05NDQ5LTEzNGFlMzUwNTNkMg==`;
-
-const BLURB_API_KEY = 'api_key-0aca72c9-9df1-4bf1-a631-271004d79bc0';
-const BLURB_SHARED_SECRET = 'secret-dfde2935-459a-4ebe-b522-3a7779a9ccc6';
 
 const CheckoutScreen: React.FC = () => {
   const navigation = useNavigation<CheckoutScreenNavigationProp>();
@@ -156,68 +150,46 @@ const CheckoutScreen: React.FC = () => {
     }
   };
 
-
   const createOrder = async () => {
     try {
-      if (!shippingInfo) return;
+      if (!shippingInfo) {
+        throw new Error('Missing shipping information.');
+      }
 
-      const orderItems = cartItems.map((item) => ({
-        sku: 'HCIW_12x12_MAT_GL100T', // Ensure this SKU is valid
+      const lineItems: LineItem[] = cartItems.map((item) => ({
+        external_id: item.id,
+        title: item.title,
         quantity: 1,
-        retailPrice: item.price.toFixed(2),
-        itemDescription: item.title,
-        product: {
-          coverUrl: 'https://docs.api.sandbox.rpiprint.com/pdfs/HCIW_12x12_MAT_GL100T_20pg_cover.pdf',
-          gutsUrl: item.pdfPath, // Ensure this URL is valid
+        printable_normalization: {
+          cover: { source_url: 'https://www.dropbox.com/scl/fi/5k9rbd9vjnykz06x7ltf2/1c7841d3-7ea2-40cd-b6bd-eedc922e3be9.pdf?rlkey=1vq2gr2hxhep4fvo7zmn9m7gx&st=zmt8mmca&dl=1&raw=1' },
+          interior: { source_url: item.pdfPath },
+          pod_package_id: '0425X0687FCPRESS060UW444GXX',
         },
       }));
 
-      const orderPayload = {
-        currency: 'USD',
-        "payload": "{custom_payload}",
-        shippingClassification: 'priority',
-        webhookUrl: 'https://notification-testing-service.builder.blurb.com/notification/rpi-open-api-test/http-code-200/dummy',
-        destination: {
-          name: shippingInfo.name,
-          company: shippingInfo.company || 'N/A',
-          address1: shippingInfo.address1,
-          address2: shippingInfo.address2 || '',
-          address3: shippingInfo.address3 || '',
+
+      const response = await createLuluPrintJob(
+        {
           city: shippingInfo.city,
-          state: shippingInfo.state,
-          postal: shippingInfo.postal,
-          country: shippingInfo.country,
-          phone: shippingInfo.phone,
-          email: shippingInfo.email,
+          country_code: shippingInfo.country,
+          name: shippingInfo.name,
+          phone_number: shippingInfo.phone,
+          postcode: shippingInfo.postal,
+          state_code: shippingInfo.state,
+          street1: shippingInfo.address1,
+          email: user?.email || 'test@test.com',
         },
-        orderItems,
-      };
+        lineItems
+      );
 
-      console.log('Order Payload:', JSON.stringify(orderPayload, null, 2));
-
-      const config = {
-        method: 'post',
-        maxBodyLength: Infinity,
-        url: 'https://open.api.rpiprint.com/orders/create',
-        headers: {
-          'accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': auth_header,
-        },
-        data: JSON.stringify(orderPayload),
-      };
-
-      const response = await axios(config);
-
-      console.log('Response Data:', JSON.stringify(response.data, null, 2));
-      return response.data;
+      console.log('Lulu Print Job Created:', response);
+      return response;
     } catch (error) {
       console.error('Error creating order:', error);
-      throw new Error( 'Failed to create order');
+      Alert.alert('Order Creation Failed', 'Could not create the print job. Please try again later.');
+      throw error;
     }
   };
-
-
 
   return (
     <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>

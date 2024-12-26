@@ -11,7 +11,7 @@ export const PROMPTS = [
         • Include context about significant dates or events mentioned
         • End with a reflection on their connection
         • Style: Written in third person, romantic but not overly sentimental
-        • Length: Between 3,500-4,000 words (approximately 20 pages with photos).
+        • Length: Between 3,500-4,000 words (approximately 35 pages without photos).
         Structure:
         • Introduction (300-400 words)
         • The blossoming romance (2,500-2,800 words)
@@ -30,7 +30,7 @@ export const PROMPTS = [
         • Showcase how they've been there for each other
         • Reference shared memories captured in their photos
         • Style: Warm, conversational tone with elements of humor
-        • Length: Between 3,500-4,000 words (approximately 20 pages with photos).
+        • Length: Between 3,500-4,000 words (approximately 35 pages without photos).
         Structure:
         • Introduction (300-400 words)
         • Key moments of friendship (2,500-2,800 words)
@@ -49,7 +49,7 @@ export const PROMPTS = [
         • Incorporate family photos and the stories behind them
         • Showcase the evolution of their relationships
         • Style: Warm, inclusive, multi-generational perspective
-        • Length: Between 3,500-4,000 words (approximately 20 pages with photos).
+        • Length: Between 3,500-4,000 words (approximately 35 pages without photos).
         Structure:
         • Family introduction (300-400 words)
         • Everyday moments and milestones (2,500-2,800 words)
@@ -68,7 +68,7 @@ export const PROMPTS = [
         • Show the progression of their relationship through message style and frequency
         • Incorporate significant milestones and shared experiences
         • Style: Chronological narrative with a sense of anticipation and discovery
-        • Length: Between 3,500-4,000 words (approximately 20 pages with photos).
+        • Length: Between 3,500-4,000 words (approximately 35 pages without photos).
         Structure:
         • The first exchange (300-400 words)
         • Developing connection (2,500-2,800 words)
