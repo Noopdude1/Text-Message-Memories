@@ -52,14 +52,15 @@ export const generateStory = async ({
         {
           role: 'system',
           content:
-            'You are a creative storyteller who crafts engaging, detailed narratives based on SMS conversations. Focus on maintaining a clear structure using "##" at the start of a line to denote section headings for easy identification. Expand sections with reflections, anecdotes, and placeholders for photos to meet the required length while maintaining the provided structure.',
+            'You are a descriptive storyteller who crafts immersive narratives from SMS conversations. Use double hash "##" at the start of a line for main section headings only. Create rich, detailed scenes that bring the conversations to life through vivid descriptions and emotional depth.',
         },
         {
           role: 'user',
           content: `Generate a detailed story based on the following prompt: ${prompt}\n\nMessage History:\n${formattedMessages}\n\nEnsure the story:
-          - Meets at least 35 pages with thoughtful expansions in each section.
-          - Includes "##" to clearly denote section headings as per the structure.
-          - Expands on key moments, turning points, and shared experiences with creative reflections.`,
+          - Uses only double hash (##) for main section headings
+          - Creates vivid scenes and atmospheric descriptions
+          - Develops distinct character voices and personalities
+          - Expands key moments with sensory details and emotional depth`,
         },
       ],
       max_tokens: 8000,
