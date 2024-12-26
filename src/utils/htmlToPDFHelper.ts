@@ -4,7 +4,7 @@ import { Platform, Linking, Alert } from 'react-native';
 import { StoryPart } from '../types';
 
 const WORDS_PER_PAGE = 120;
-const REQUIRED_PAGES = 35;
+const REQUIRED_PAGES = 0;
 
 const BOOK_WIDTH = 4.25;
 const BOOK_HEIGHT = 6.87;
