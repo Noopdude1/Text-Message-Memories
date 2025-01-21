@@ -50,7 +50,16 @@ const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     saveDataToStorage();
   }, [cartItems]);
 
-  // Add item to the cart
+  const recalculatePrices = (items: CartItem[]): CartItem[] => {
+    const basePrice = 21.99;
+    const discountRate = 0.15;
+
+    return items.map((item, index) => ({
+      ...item,
+      price: index === 0 ? basePrice : parseFloat((basePrice * (1 - discountRate)).toFixed(2)),
+    }));
+  };
+
   const addToCart = (item: CartItem) => {
     setCartItems((prevItems) => {
       const exists = prevItems.some((cartItem) => cartItem.id === item.id);
@@ -58,7 +67,8 @@ const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         Alert.alert('Item already in cart', 'This item is already added to your cart.');
         return prevItems;
       }
-      return [...prevItems, item];
+      const updatedItems = [...prevItems, item];
+      return recalculatePrices(updatedItems);
     });
   };
 
@@ -68,8 +78,9 @@ const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const updatedItems = prevItems.filter((item) => item.id !== itemId);
       if (updatedItems.length === prevItems.length) {
         Alert.alert('Item not found', 'The item you are trying to remove does not exist.');
+        return prevItems;
       }
-      return updatedItems;
+      return recalculatePrices(updatedItems);
     });
   };
 

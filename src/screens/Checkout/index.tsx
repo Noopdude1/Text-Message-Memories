@@ -48,8 +48,8 @@ const CheckoutScreen: React.FC = () => {
 
   const totalPrice = cartItems.reduce((sum, item) => sum + item.price, 0).toFixed(2);
 
+  // Removed the old useEffect that automatically calls Payment Sheet init.
   useEffect(() => {
-    initializePaymentSheet();
     loadShippingInfo();
   }, []);
 
@@ -64,6 +64,7 @@ const CheckoutScreen: React.FC = () => {
     }
   };
 
+  // We'll call this after the order is created, so the PaymentIntent is always fresh.
   const fetchPaymentSheetParams = async () => {
     try {
       const response = await fetch(
@@ -87,69 +88,6 @@ const CheckoutScreen: React.FC = () => {
     }
   };
 
-  const initializePaymentSheet = async () => {
-    try {
-      const { clientSecret } = await fetchPaymentSheetParams();
-
-      const { error } = await initPaymentSheet({
-        paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: 'Story Book',
-        paymentMethodOrder: ["card"],
-        defaultBillingDetails: {
-          name: user?.displayName || "",
-          email: user?.email || "",
-        },
-      });
-
-      if (!error) {
-        setPaymentSheetLoaded(true);
-      } else {
-        Alert.alert('Error', error.message);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to initialize payment sheet.');
-    }
-  };
-
-  const openPaymentSheet = async () => {
-    if (!paymentSheetLoaded || !shippingInfo) {
-      Alert.alert('Error', 'Shipping information or payment sheet not loaded.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { error } = await presentPaymentSheet();
-
-      if (error) {
-        Alert.alert('Payment Failed', error.message);
-        return;
-      }
-
-      try {
-        await createOrder();
-
-        Alert.alert('Success', 'Your payment and order were successful!', [
-          {
-            text: 'Continue',
-            onPress: () => {
-              clearCart();
-              navigation.navigate('Conversations');
-            },
-          },
-        ]);
-      } catch (orderError) {
-        console.error('Error during order creation:', orderError);
-        Alert.alert('Order Creation Failed', 'Payment succeeded but order creation failed. Please contact support.');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to complete the transaction.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const createOrder = async () => {
     try {
       if (!shippingInfo) {
@@ -161,12 +99,14 @@ const CheckoutScreen: React.FC = () => {
         title: item.title,
         quantity: 1,
         printable_normalization: {
-          cover: { source_url: 'https://www.dropbox.com/scl/fi/5k9rbd9vjnykz06x7ltf2/1c7841d3-7ea2-40cd-b6bd-eedc922e3be9.pdf?rlkey=1vq2gr2hxhep4fvo7zmn9m7gx&st=zmt8mmca&dl=1&raw=1' },
+          cover: {
+            source_url:
+              'https://www.dropbox.com/scl/fi/5k9rbd9vjnykz06x7ltf2/1c7841d3-7ea2-40cd-b6bd-eedc922e3be9.pdf?rlkey=1vq2gr2hxhep4fvo7zmn9m7gx&st=zmt8mmca&dl=1&raw=1',
+          },
           interior: { source_url: item.pdfPath },
           pod_package_id: '0425X0687FCPRESS060UW444GXX',
         },
       }));
-
 
       const response = await createLuluPrintJob(
         {
@@ -183,11 +123,101 @@ const CheckoutScreen: React.FC = () => {
       );
 
       console.log('Lulu Print Job Created:', response);
-      return response;
+      return response; // If you need this data later, you can store it
     } catch (error) {
       console.error('Error creating order:', error);
       Alert.alert('Order Creation Failed', 'Could not create the print job. Please try again later.');
       throw error;
+    }
+  };
+
+  // Initialize Payment Sheet AFTER order creation
+  const initializePaymentSheet = async () => {
+    try {
+      const { clientSecret } = await fetchPaymentSheetParams();
+
+      const { error } = await initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: 'Story Book',
+        paymentMethodOrder: ['card'],
+        defaultBillingDetails: {
+          name: user?.displayName || '',
+          email: user?.email || '',
+        },
+      });
+
+      if (!error) {
+        setPaymentSheetLoaded(true);
+      } else {
+        Alert.alert('Error', error.message);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to initialize payment sheet.');
+      throw error;
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!shippingInfo) {
+      Alert.alert('Error', 'Shipping information not loaded.');
+      return;
+    }
+
+    setLoading(true);
+    setPaymentSheetLoaded(false);
+
+    try {
+      // 1) Create the order on the backend (no user-facing success message yet).
+      await createOrder();
+
+      // 2) Fetch PaymentIntent and initialize the Payment Sheet.
+      await initializePaymentSheet();
+
+      // 3) Present the Payment Sheet to the user.
+      const { error } = await presentPaymentSheet();
+
+      // If user cancels or payment fails:
+      if (error) {
+        // Prompt them to retry or cancel
+        Alert.alert(
+          'Payment',
+          'Your payment was canceled or failed. Would you like to try again?',
+          [
+            {
+              text: 'Yes',
+              onPress: () => {
+                // Just call handleCheckout again if they want to retry
+                handleCheckout();
+              },
+            },
+            {
+              text: 'No',
+              style: 'cancel',
+              onPress: () => {
+                // Possibly handle "Cancel" scenario here
+                // If you need to cancel the order in backend, do it here
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      // 4) If Payment is successful, THEN we finalize: show success, clear cart, navigate, etc.
+      Alert.alert('Success', 'Your payment and order were successful!', [
+        {
+          text: 'Continue',
+          onPress: () => {
+            clearCart();
+            navigation.navigate('Conversations');
+          },
+        },
+      ]);
+    } catch (err) {
+      Alert.alert('Error', 'Something went wrong during checkout.');
+      console.log('Checkout error:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -217,19 +247,18 @@ const CheckoutScreen: React.FC = () => {
               <Text style={styles.totalPrice}>${totalPrice}</Text>
             </View>
           </View>
-
         </ScrollView>
 
         <View style={styles.bottomBarContainer}>
           <TouchableOpacity
             style={[
               styles.payButton,
-              (!paymentSheetLoaded || loading) && styles.payButtonDisabled
+              loading && styles.payButtonDisabled,
             ]}
-            onPress={openPaymentSheet}
-            disabled={!paymentSheetLoaded || loading}
+            onPress={handleCheckout}
+            disabled={loading}
           >
-            {loading || !paymentSheetLoaded ? (
+            {loading ? (
               <ActivityIndicator color="#FFF" size="small" />
             ) : (
               <>
@@ -341,24 +370,6 @@ const styles = StyleSheet.create({
   },
   buttonIcon: {
     marginRight: 5,
-  },
-  securePaymentContainer: {
-    backgroundColor: '#F0F4F8',
-    borderRadius: 12,
-    padding: 15,
-    alignItems: 'center',
-  },
-  securePaymentText: {
-    fontSize: 16,
-    fontFamily: 'Poppins-SemiBold',
-    color: '#1A1A1A',
-    marginBottom: 5,
-  },
-  securePaymentSubtext: {
-    fontSize: 12,
-    fontFamily: 'Poppins-Regular',
-    color: '#666',
-    textAlign: 'center',
   },
 });
 

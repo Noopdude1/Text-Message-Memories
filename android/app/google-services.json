@@ -7,12 +7,20 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:436319392807:android:bdbd57b6a3ce5bbdaf6a02",
+        "mobilesdk_app_id": "1:436319392807:android:2c17e74f001d954caf6a02",
         "android_client_info": {
-          "package_name": "com.messages"
+          "package_name": "com.messagestexttale"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "436319392807-pij9igumfd9m7f7cba8tlpdhvilgrp7l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.messagestexttale",
+            "certificate_hash": "b05636e9fdce09216bf9fd2243953152666f8032"
+          }
+        },
         {
           "client_id": "436319392807-5mccu66ndgij36epbis7aeh4ejdh5tni.apps.googleusercontent.com",
           "client_type": 3

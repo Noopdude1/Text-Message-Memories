@@ -29,7 +29,9 @@ interface PreviewScreenProps {
 const PreviewScreen: React.FC<PreviewScreenProps> = ({ route }) => {
   const navigation = useNavigation<PreviewScreenNavigationProp>();
   const { storyParts } = route.params;
-  const { addToCart } = useCart();
+
+  // 1) We now also read the cart items so we can see how many books are in it
+  const { cartItems, addToCart } = useCart();
 
   const [isGenerating, setIsGenerating] = useState(true);
   const [pdfCloudUrl, setPdfCloudUrl] = useState<string | null>(null);
@@ -75,7 +77,6 @@ const PreviewScreen: React.FC<PreviewScreenProps> = ({ route }) => {
       }
 
       const uniqueFileName = `storybook_${Date.now()}`;
-
       const uploadedUrl = await uploadToCloudinary(`file://${pdfPath}`, uniqueFileName);
       if (!uploadedUrl) {
         throw new Error('Failed to upload PDF to Cloudinary');
@@ -91,10 +92,21 @@ const PreviewScreen: React.FC<PreviewScreenProps> = ({ route }) => {
     }
   }, [storyParts, navigation]);
 
-
   useEffect(() => {
     generateAndUploadPDF();
   }, [generateAndUploadPDF]);
+
+  // 2) Apply 15% discount only if cart already has at least 1 item
+  //    First book => 21.99, subsequent => 21.99 * 0.85 => 18.70
+  const getPriceWithDiscount = () => {
+    const basePrice = 21.99;
+    if (cartItems.length === 0) {
+      return basePrice; // First item, no discount
+    } else {
+      const discounted = Number((basePrice * 0.85).toFixed(2));
+      return discounted;
+    }
+  };
 
   const handleAddToCart = () => {
     if (!pdfCloudUrl) {
@@ -102,12 +114,15 @@ const PreviewScreen: React.FC<PreviewScreenProps> = ({ route }) => {
       return;
     }
 
+    // 3) Use the "getPriceWithDiscount()" function
+    const finalPrice = getPriceWithDiscount();
+
     addToCart({
       id: Date.now().toString(),
       title: 'My Storybook',
       content: storyParts.map((part) => part.content || '').join('\n'),
       pdfPath: pdfCloudUrl,
-      price: 19.99,
+      price: finalPrice,
       coverImage: storyParts.find((part) => part.type === 'image')?.uri || '',
     });
 
@@ -115,7 +130,7 @@ const PreviewScreen: React.FC<PreviewScreenProps> = ({ route }) => {
   };
 
   if (isGenerating) {
-    return <BookAnimation/>
+    return <BookAnimation />;
   }
 
   if (webViewError) {
@@ -133,13 +148,16 @@ const PreviewScreen: React.FC<PreviewScreenProps> = ({ route }) => {
     <View style={styles.container}>
       <TopBar title="Storybook Preview" currentStep={4} totalSteps={5} />
       <WebView
-        source={{ uri: `https://pdf-flipbook-one.vercel.app/?url=${ pdfCloudUrl ?? "https://res.cloudinary.com/needbuddy/image/upload/v1733004074/sample_c0pubo.pdf"}` }}
+        source={{
+          uri:
+            `https://pdf-flipbook-one.vercel.app/?url=${
+              pdfCloudUrl ?? 'https://res.cloudinary.com/needbuddy/image/upload/v1733004074/sample_c0pubo.pdf'
+            }`,
+        }}
         style={styles.webview}
         onError={() => setWebViewError(true)}
         startInLoadingState={true}
-        renderLoading={() => (
-          <BookAnimation message='Loading your book....'/>
-        )}
+        renderLoading={() => <BookAnimation message="Loading your book...." />}
       />
       <BottomBar
         currentStep={4}

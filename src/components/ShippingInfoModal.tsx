@@ -7,8 +7,11 @@ import {
   TextInput,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import useGoogleAuth from '../hooks/useGoogleAuth';
+import { validateLuluShippingAddress } from '../utils/luluApiHelper';
 
 const stateCodes = [
   "AL", "AK", "AS", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA",
@@ -71,7 +74,7 @@ const statePostalCodeRanges = {
   WY: { min: 82001, max: 83414 },
 };
 
-interface ShippingInfo {
+export interface ShippingInfo {
   name: string;
   company: string;
   address1: string;
@@ -84,7 +87,7 @@ interface ShippingInfo {
   email: string;
 }
 
-interface ShippingInfoModalProps {
+export interface ShippingInfoModalProps {
   visible: boolean;
   shippingInfo: ShippingInfo;
   onChangeShippingInfo: (field: keyof ShippingInfo, value: string) => void;
@@ -100,6 +103,8 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
   onClose,
 }) => {
   const [postalError, setPostalError] = useState<string>('');
+  const { user } = useGoogleAuth();
+
 
   const validatePostalCode = (postal: string, state: string) => {
     if (!postal) {
@@ -139,6 +144,65 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
     }
   };
 
+
+  const convertShippingInfo = (info: ShippingInfo) => ({
+    city: info.city,
+    country_code: info.country,
+    name: info.name,
+    phone_number: info.phone,
+    postcode: info.postal,
+    state_code: info.state,
+    street1: info.address1,
+    email: info.email,
+  });
+
+  const handleSavePress = async () => {
+    try {
+      const luluShippingInfo = convertShippingInfo(shippingInfo);
+      const result = await validateLuluShippingAddress(luluShippingInfo);
+      // Check for warnings in the result:
+      if (result.warning === "incomplete") {
+        Alert.alert(
+          "Address Incomplete",
+          "The shipping address you provided is incomplete and cannot be used to create a print job. Please update your address."
+        );
+        return;
+      }
+
+      if (result.warning && result.warning !== "incomplete") {
+        let message = "We noticed some issues with your shipping address.";
+        if (result.recommended_address) {
+          const rec = result.recommended_address;
+          message += `\n\nSuggested Address:\n${rec.street1 || ""}${rec.street2 ? ", " + rec.street2 : ""}\n${rec.city || ""}, ${rec.state_code || ""} ${rec.postcode || ""}\n${rec.country_code || ""}`;
+        }
+        message += "\n\nDo you want to proceed with your current address?";
+        // Prompt the user with the warning before proceeding
+        return new Promise<void>((resolve) => {
+          Alert.alert(
+            "Address Warning",
+            message,
+            [
+              { text: "Cancel", onPress: () => resolve(), style: "cancel" },
+              { text: "Continue", onPress: () => { onSave(); resolve(); } },
+            ]
+          );
+        });
+      }
+
+      // If no warning, validation passed: call parent's onSave.
+      onSave();
+    } catch (error) {
+      Alert.alert(
+        "Address Validation Failed",
+        "We were unable to validate your address at this time. Please double-check your shipping information. Do you want to continue anyway?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Continue", onPress: onSave },
+        ]
+      );
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -157,7 +221,7 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
                 placeholder="Enter your full name"
                 placeholderTextColor="#999"
                 value={shippingInfo.name}
-                onChangeText={(text) => onChangeShippingInfo('name', text)}
+                onChangeText={(text) => onChangeShippingInfo("name", text)}
               />
             </View>
 
@@ -168,7 +232,7 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
                 placeholder="Enter company name (optional)"
                 placeholderTextColor="#999"
                 value={shippingInfo.company}
-                onChangeText={(text) => onChangeShippingInfo('company', text)}
+                onChangeText={(text) => onChangeShippingInfo("company", text)}
               />
             </View>
 
@@ -179,7 +243,7 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
                 placeholder="Enter street address"
                 placeholderTextColor="#999"
                 value={shippingInfo.address1}
-                onChangeText={(text) => onChangeShippingInfo('address1', text)}
+                onChangeText={(text) => onChangeShippingInfo("address1", text)}
               />
             </View>
 
@@ -190,7 +254,7 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
                 placeholder="Apartment, suite, unit, etc. (optional)"
                 placeholderTextColor="#999"
                 value={shippingInfo.address2}
-                onChangeText={(text) => onChangeShippingInfo('address2', text)}
+                onChangeText={(text) => onChangeShippingInfo("address2", text)}
               />
             </View>
 
@@ -201,7 +265,7 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
                 placeholder="Enter city"
                 placeholderTextColor="#999"
                 value={shippingInfo.city}
-                onChangeText={(text) => onChangeShippingInfo('city', text)}
+                onChangeText={(text) => onChangeShippingInfo("city", text)}
               />
             </View>
 
@@ -213,9 +277,9 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
                   onValueChange={handleStateChange}
                   style={styles.picker}
                 >
-                  <Picker.Item label="Select a state" value="" style={{color: "#999"}}/>
+                  <Picker.Item label="Select a state" value="" style={{ color: "#999" }} />
                   {stateCodes.map((code) => (
-                    <Picker.Item key={code} label={code} value={code} style={{color: "black"}} />
+                    <Picker.Item key={code} label={code} value={code} style={{ color: "black" }} />
                   ))}
                 </Picker>
               </View>
@@ -244,7 +308,7 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
                 placeholder="Enter country"
                 placeholderTextColor="#999"
                 value={shippingInfo.country}
-                onChangeText={(text) => onChangeShippingInfo('country', text)}
+                onChangeText={(text) => onChangeShippingInfo("country", text)}
               />
             </View>
 
@@ -255,7 +319,7 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
                 placeholder="Enter phone number"
                 placeholderTextColor="#999"
                 value={shippingInfo.phone}
-                onChangeText={(text) => onChangeShippingInfo('phone', text)}
+                onChangeText={(text) => onChangeShippingInfo("phone", text)}
                 keyboardType="phone-pad"
               />
             </View>
@@ -267,7 +331,7 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
                 placeholder="Enter email address"
                 placeholderTextColor="#999"
                 value={shippingInfo.email}
-                onChangeText={(text) => onChangeShippingInfo('email', text)}
+                onChangeText={(text) => onChangeShippingInfo("email", text)}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
@@ -275,15 +339,12 @@ const ShippingInfoModal: React.FC<ShippingInfoModalProps> = ({
           </ScrollView>
 
           <View style={styles.modalFooter}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={onClose}
-            >
+            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.saveButton, postalError ? styles.saveButtonDisabled : null]}
-              onPress={onSave}
+              onPress={handleSavePress}
               disabled={!!postalError}
             >
               <Text style={styles.saveButtonText}>Save & Continue</Text>

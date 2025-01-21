@@ -3,6 +3,7 @@ import axios from 'axios';
 
 const LULU_AUTH_URL = "https://api.lulu.com/auth/realms/glasstree/protocol/openid-connect/token";
 const LULU_PRINT_JOB_URL = "https://api.lulu.com/print-jobs/";
+const LULU_PRINT_JOB_COST_URL = "https://api.lulu.com/print-job-cost-calculations/";
 
 const LULU_AUTH_HEADER = "Basic YWNiNjZlYTUtMGMxMy00OGI0LWIwZmQtM2ZjYmI5MjFhOThhOkFwcjFzMk0wdW5SOE5jaTFodU01eGkwZDM1T3dOTDhz"; // Replace with your Base64 encoded credentials
 
@@ -183,3 +184,66 @@ export const createLuluPrintJob = async (
       throw error;
     }
   };
+
+
+  /**
+ * Validate the shipping address using Lulu’s Print‑Job Cost Calculations API.
+ * This method sends realistic data (a sample line item, shipping address, and shipping option)
+ * to the endpoint. The API’s response may include warnings (e.g. "incomplete") or suggested
+ * corrections that your client can use to notify the user.
+ *
+ * @param {ShippingInfo} shippingInfo - The shipping address to validate.
+ * @returns {Promise<any>} The parsed response data from the API.
+ */
+export const validateLuluShippingAddress = async (
+  shippingInfo: ShippingInfo
+): Promise<any> => {
+  try {
+    const token = await getLuluAuthToken();
+    console.log("Token retrieved for address validation:", token);
+
+    // Build a payload using realistic data.
+    const payload = {
+      line_items: [
+        {
+          page_count: 32,
+          pod_package_id: "0425X0687FCPRESS060UW444GXX",
+          quantity: 1,
+        },
+      ],
+      shipping_address: {
+        city: shippingInfo.city,
+        country_code: shippingInfo.country_code,
+        postcode: shippingInfo.postcode,
+        state_code: shippingInfo.state_code || "",
+        street1: shippingInfo.street1,
+        phone_number: shippingInfo.phone_number,
+      },
+      shipping_option: "EXPRESS",
+    };
+
+    const config = {
+      method: "post",
+      url: LULU_PRINT_JOB_COST_URL,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "Cache-Control": "no-cache",
+      },
+      data: JSON.stringify(payload),
+    };
+
+    console.log("Sending address validation payload to Lulu API:", payload);
+
+    const response = await axios.request(config);
+    console.log("Lulu Address Validation Response:", response.data);
+
+    return response.data;
+  } catch (error) {
+    console.error("Error validating Lulu shipping address:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("Axios error response:", error.response?.data);
+    }
+    throw error;
+  }
+};

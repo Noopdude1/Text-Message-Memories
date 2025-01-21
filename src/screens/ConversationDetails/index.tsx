@@ -21,6 +21,7 @@ import TopBar from '../../components/TopBar';
 import { NavigationParams, SMSMessage } from '../../types';
 import { PROMPTS } from '../../utils/constants';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import useGoogleAuth from '../../hooks/useGoogleAuth';
 
 interface RouteParams {
   address: string;
@@ -35,6 +36,12 @@ const ConversationDetailsScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
   const { address } = route.params;
   const navigation = useNavigation<ConversationDetailsScreenNavigationProp>();
+
+  // Get the signed-in user
+  const { user } = useGoogleAuth();
+  const currentUserName = user?.displayName || "You";
+  // For demonstration, we use the conversation address as the partner’s name.
+  const conversationPartnerName = address;
 
   const [messages, setMessages] = useState<SMSMessage[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(PROMPTS[0].title);
@@ -72,15 +79,33 @@ const ConversationDetailsScreen: React.FC = () => {
     fetchMessages();
   }, [address]);
 
-  const handleNext = async () => {
-    const selectedDetails =
-      PROMPTS.find((prompt) => prompt.title === selectedPrompt)?.details || customPrompt;
-
-    if (selectedDetails) {
-      navigation.navigate('StoryEditor', { prompt: selectedDetails, messages });
+  /**
+   * Prepares the final prompt to send to the story generator.
+   * For predefined prompts, [Person1] and [Person2] are replaced with the current user's
+   * and the conversation partner's names. For a custom prompt that does not contain these tokens,
+   * a header line is prepended.
+   */
+  const preparePromptWithNames = (rawPrompt: string): string => {
+    const containsPlaceholders = /\[Person1\]/.test(rawPrompt) || /\[Person2\]/.test(rawPrompt);
+    if (containsPlaceholders) {
+      return rawPrompt
+        .replace(/\[Person1\]/g, currentUserName)
+        .replace(/\[Person2\]/g, conversationPartnerName);
     } else {
-      Alert.alert('Please select or enter a prompt');
+      // If no placeholders exist, prepend a line to indicate the two users.
+      return `Conversation between ${currentUserName} and ${conversationPartnerName}:\n\n${rawPrompt}`;
     }
+  };
+
+  const handleNext = async () => {
+    const rawPrompt =
+      PROMPTS.find((prompt) => prompt.title === selectedPrompt)?.details || customPrompt;
+    if (!rawPrompt.trim()) {
+      Alert.alert('Please select or enter a prompt');
+      return;
+    }
+    const finalPrompt = preparePromptWithNames(rawPrompt);
+    navigation.navigate('StoryEditor', { prompt: finalPrompt, messages });
   };
 
   const handlePromptSelection = (title: string) => {
@@ -115,7 +140,6 @@ const ConversationDetailsScreen: React.FC = () => {
               <Text style={styles.promptDescription}>{prompt.description}</Text>
             </TouchableOpacity>
           ))}
-
           <View style={styles.customPromptContainer}>
             <Text style={styles.customPromptTitle}>Custom Prompt</Text>
             <TextInput
@@ -130,7 +154,6 @@ const ConversationDetailsScreen: React.FC = () => {
               multiline
             />
           </View>
-
         </ScrollView>
       </View>
       <BottomBar

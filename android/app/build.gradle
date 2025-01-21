@@ -78,13 +78,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.messages"
+    namespace "com.messagestexttale"
     defaultConfig {
-        applicationId "com.messages"
+        applicationId "com.messagestexttale"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 9
+        versionName "1.017"
     }
     signingConfigs {
         debug {
