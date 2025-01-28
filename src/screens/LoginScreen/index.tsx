@@ -29,7 +29,7 @@ const LoginScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to SMS Reader</Text>
+      <Text style={styles.title}>Welcome to Text Tale</Text>
       <Button title="Sign in with Google" loading={isLoading} onPress={handleGoogleSignIn} />
     </View>
   );
