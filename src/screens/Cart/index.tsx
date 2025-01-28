@@ -105,7 +105,7 @@ const CartScreen: React.FC = () => {
 
   const renderCartItem = ({ item }: { item: CartItem }) => (
     <View style={styles.cartItem}>
-      <Image source={{ uri: item.coverImage }} style={styles.itemImage} />
+      {item.coverImage && <Image source={{ uri: item.coverImage }} style={styles.itemImage} />}
       <View style={styles.cartItemDetails}>
         <Text style={styles.itemTitle}>{item.title}</Text>
         <Text style={styles.itemPrice}>${item.price.toFixed(2)}</Text>

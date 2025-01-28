@@ -5,7 +5,7 @@ const LULU_AUTH_URL = "https://api.lulu.com/auth/realms/glasstree/protocol/openi
 const LULU_PRINT_JOB_URL = "https://api.lulu.com/print-jobs/";
 const LULU_PRINT_JOB_COST_URL = "https://api.lulu.com/print-job-cost-calculations/";
 
-const LULU_AUTH_HEADER = "Basic YWNiNjZlYTUtMGMxMy00OGI0LWIwZmQtM2ZjYmI5MjFhOThhOkFwcjFzMk0wdW5SOE5jaTFodU01eGkwZDM1T3dOTDhz"; // Replace with your Base64 encoded credentials
+const LULU_AUTH_HEADER = "Basic NWFkNTQxMzktZDVhNC00MjJhLWI0ZTQtNzkzMmVhMTM3ZDU3OllYNFlvaFI5V3dNbnoxU29lam1kQzFZaENpZkg4WVdr"; // Replace with your Base64 encoded credentials
 
 export interface ShippingInfo {
   city: string;

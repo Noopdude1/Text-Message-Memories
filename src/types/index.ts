@@ -32,7 +32,7 @@ export interface CartItem {
 
 export interface NavigationParams extends ParamListBase {
   Conversations: undefined;
-  ConversationDetails: { address: string };
+  ConversationDetails: { address: string, contactName: string };
   Login: undefined;
   StoryEditor: { prompt: string; messages: SMSMessage[] };
   Preview: {

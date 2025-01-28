@@ -25,6 +25,7 @@ import useGoogleAuth from '../../hooks/useGoogleAuth';
 
 interface RouteParams {
   address: string;
+  contactName: string;
 }
 
 type ConversationDetailsScreenNavigationProp = NativeStackNavigationProp<
@@ -34,14 +35,11 @@ type ConversationDetailsScreenNavigationProp = NativeStackNavigationProp<
 
 const ConversationDetailsScreen: React.FC = () => {
   const route = useRoute<RouteProp<{ params: RouteParams }, 'params'>>();
-  const { address } = route.params;
+  const { address, contactName = "Person 2" } = route.params;
   const navigation = useNavigation<ConversationDetailsScreenNavigationProp>();
 
-  // Get the signed-in user
   const { user } = useGoogleAuth();
   const currentUserName = user?.displayName || "You";
-  // For demonstration, we use the conversation address as the partner’s name.
-  const conversationPartnerName = address;
 
   const [messages, setMessages] = useState<SMSMessage[]>([]);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(PROMPTS[0].title);
@@ -90,10 +88,9 @@ const ConversationDetailsScreen: React.FC = () => {
     if (containsPlaceholders) {
       return rawPrompt
         .replace(/\[Person1\]/g, currentUserName)
-        .replace(/\[Person2\]/g, conversationPartnerName);
+        .replace(/\[Person2\]/g, contactName);
     } else {
-      // If no placeholders exist, prepend a line to indicate the two users.
-      return `Conversation between ${currentUserName} and ${conversationPartnerName}:\n\n${rawPrompt}`;
+      return `Conversation between ${currentUserName} and ${contactName}:\n\n${rawPrompt}`;
     }
   };
 

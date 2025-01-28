@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import {  NavigationParams } from '../../types';
+import { NavigationParams } from '../../types';
 import { formatDate } from '../../utils/dateFormatter';
 import TopBar from '../../components/TopBar';
 import BottomBar from '../../components/BottomBar';
@@ -83,7 +83,19 @@ const ConversationsScreen: React.FC = () => {
         totalSteps={4}
         onNext={() => {
           if (selectedConversation) {
-            navigation.navigate('ConversationDetails', { address: selectedConversation });
+            const chosenConversation = conversations.find(
+              (c) => c.navigationAddress == selectedConversation
+            );
+
+            if (!chosenConversation) return;
+
+            const normalizedAddress = chosenConversation.address;
+            const contactName = contactMap[normalizedAddress] || 'Person Two';
+
+            navigation.navigate('ConversationDetails', {
+              address: selectedConversation,
+              contactName,
+            });
           }
         }}
         onBack={() => navigation.goBack()}
@@ -116,7 +128,9 @@ const ConversationItem: React.FC<{
         </View>
       </View>
       <View style={styles.textContainer}>
-        <Text style={styles.address} numberOfLines={1}>{contactName}</Text>
+        <Text style={styles.address} numberOfLines={1}>
+          {contactName}
+        </Text>
         <Text style={styles.messagePreview} numberOfLines={1}>
           Last message: {formattedDate}
         </Text>
@@ -160,7 +174,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#333',
     paddingHorizontal: 16,
-
     paddingBottom: 25,
     paddingTop: 15,
     fontFamily: 'Poppins-Medium',

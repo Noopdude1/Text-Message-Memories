@@ -83,8 +83,8 @@ android {
         applicationId "com.messagestexttale"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 9
-        versionName "1.017"
+        versionCode 12
+        versionName "1.022"
     }
     signingConfigs {
         debug {
