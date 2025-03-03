@@ -3,15 +3,26 @@ import { SafeAreaView, StatusBar, Text, View, ActivityIndicator, TouchableOpacit
 import AppNavigator from './src/navigation';
 import { usePermissions } from './src/hooks/useSMSPermissions';
 import { CartProvider } from './src/context/CartContext';
+import UserAgreement from './src/components/UserAgreement';
+import { useAgreement } from './src/hooks/useAgreement';
 
 const App: React.FC = () => {
-  const { permissionGranted, loading, error, retry } = usePermissions();
+  const { hasAgreed, loading: agreementLoading, handleAgree, handleExit } = useAgreement();
+  const { permissionGranted, loading: permissionsLoading, error, retry } = usePermissions();
 
-  if (loading) {
+  if (agreementLoading || permissionsLoading) {
     return (
       <SafeAreaView style={styles.centeredContainer}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text style={styles.statusText}>Requesting permissions...</Text>
+        <Text style={styles.statusText}>Loading...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!hasAgreed) {
+    return (
+      <SafeAreaView style={styles.fullScreenContainer}>
+        <UserAgreement onAgree={handleAgree} onExit={handleExit} />
       </SafeAreaView>
     );
   }

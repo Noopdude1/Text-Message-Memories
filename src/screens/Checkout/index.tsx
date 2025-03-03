@@ -35,7 +35,7 @@ type ShippingInfo = {
   email: string;
 };
 
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_51Lv9jTLZIHEwj1YnoEXEOpwW65FA5SbqYXnlw1hX2dUM2OAKJVs5zOhbdgPz0cMFUC2KYSptcd6BNg3AfP9Tcr1b00UPCeMgbL';
+const STRIPE_PUBLISHABLE_KEY = 'pk_live_51Lv9jTLZIHEwj1YnDxsWO1iT3wi7SPTxOGTk1EBrPWFAqAXEjODGYe6SBfWT2h5wvEKNHKLjMxDuP19EFNzb5BBI0094rAdGYl';
 
 const CheckoutScreen: React.FC = () => {
   const navigation = useNavigation<CheckoutScreenNavigationProp>();
